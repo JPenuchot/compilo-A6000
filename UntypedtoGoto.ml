@@ -20,8 +20,31 @@ let destructure_main p =
       
   (* destructure_instruction: S.instruction -> T.block *)
   and destructure_instruction : S.instruction -> T.block = function
-    | Print(e) -> [ T.Print(e)  ]
-    | _        -> failwith "A completer"     
+    | Print(e)  -> [ T.Print(e)  ]
+    | Set(l, e) -> [ T.Set(l, e) ]
+    
+    | While(e, b) ->
+      
+      let test_label = new_label()
+      and code_label = new_label()
+    in
+      [ T.Goto(test_label);
+        T.Label(code_label) ]
+      @ (destructure_block b)
+      @ [ T.Label(test_label);
+          T.CondGoto(e, code_label) ]
+    
+    | If(e, b1, b2) ->
+
+      let b1_label = new_label()
+      and end_label = new_label()
+    in
+      [ T.CondGoto(e, b1_label) ]
+      @ (destructure_block b2)
+      @ [ T.Goto(end_label);
+          T.Label(b1_label)]
+      @ (destructure_block b1)
+      @ [ T.Label(end_label) ]
   in
 
   { T.locals = p.S.locals; T.code = destructure_block p.S.code }
