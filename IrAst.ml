@@ -9,7 +9,7 @@ type label           = GotoAst.label
 type literal         = GotoAst.literal
 type identifier_info = GotoAst.identifier_info
 type binop           = GotoAst.binop
-    
+
 type main = {
   locals: identifier_info Symb_Tbl.t;
   code:   block;
