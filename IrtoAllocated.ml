@@ -4,7 +4,7 @@ module T = AllocatedAst
 (* Allocation *)
 let allocate_main reg_flag p =
   let current_offset = ref 0 in
-  
+
   let tbl =
     if reg_flag
     then failwith "A completer"
@@ -13,9 +13,10 @@ let allocate_main reg_flag p =
       S.Symb_Tbl.mapi (fun id (info: S.identifier_info) ->
 	match info with
 	  | FormalX -> T.Stack 0
-	  | _       -> failwith "A completer"
+	  | Local   -> 
+      current_offset := !current_offset + 4;
+      T.Stack !current_offset
       ) p.S.locals
   in
-  
+
   { T.locals = tbl; T.offset = !current_offset; T.code = p.S.code }
-    
