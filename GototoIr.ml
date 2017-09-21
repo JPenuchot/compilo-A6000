@@ -34,10 +34,18 @@ let flatten_main p =
       
   (* flatten_instruction: S.instruction -> T.instruction list *)
   and flatten_instruction = function
+    | S.Set(Identifier(l), e) ->
+      let ce, ve = flatten_expression e in
+      ce @ [ T.Value(l, ve) ]
     | S.Print(e) ->
       let ce, ve = flatten_expression e in
       ce @ [ T.Print(ve) ]
-    | _          -> failwith "A completer"
+    | S.Label(l)    -> [ T.Label(l) ]
+    | S.Goto(l)     -> [ T.Goto(l) ]
+    | S.CondGoto(e, l) ->
+      let ce, ve = flatten_expression e in
+      ce @ [ T.CondGoto(ve, l)]
+    | S.Comment(s)  -> [ T.Comment(s) ]
 	
   (* flatten_expression: S.expression -> T.instruction list -> T.value *)
   (* Appliquée à une expression, [flatten_expression] renvoie une liste
@@ -52,7 +60,12 @@ let flatten_main p =
   and flatten_expression : S.expression -> T.instruction list * T.value =
     function
       | Location(Identifier id) -> [], T.Identifier(id)
-      | _                       -> failwith "A completer"
+      | Literal(l) -> [], T.Literal(l)
+      | Binop (b, e1, e2) ->
+          let id = new_tmp ()
+          and (l1, v1) = (flatten_expression e1)
+          and (l2, v2) = (flatten_expression e2) in
+          (l1 @ l2 @ [ Binop(id, b, v1, v2) ], T.Identifier(id))
   in
 
   (* label_instruction: T.instruction -> T.label * T.instruction *)
