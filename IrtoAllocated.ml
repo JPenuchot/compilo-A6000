@@ -14,7 +14,7 @@ let allocate_main reg_flag p =
 	match info with
 	  | FormalX -> T.Stack 0
 	  | Local   -> 
-      current_offset := !current_offset + 4;
+      current_offset := !current_offset - 4;
       T.Stack !current_offset
       ) p.S.locals
   in

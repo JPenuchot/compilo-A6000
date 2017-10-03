@@ -20,12 +20,37 @@ let generate_main p =
   and load_value r : AllocatedAst.value -> 'a Mips.asm = function
     | Identifier(id) -> (match find_alloc id with
 	| Stack o -> lw r o ~$fp
-	| _       -> failwith "A completer")
-    | _              -> failwith "A completer"
+	| Reg r1 -> move r r1)
+    | Literal(Int(i)) -> li r i
+    | Literal(Bool(true)) -> li r 1
+    | Literal(Bool(false)) -> li r 0
 
   and generate_instr : AllocatedAst.instruction -> 'a Mips.asm = function
-    | Print(v) -> load_value ~$a0 v @@ li ~$v0 11 @@ syscall
-    | _        -> failwith "A completer"     
+    | Print(v)  -> load_value ~$a0 v @@ li ~$v0 11 @@ syscall
+    | Label(l)  -> label l
+    | Goto(l)   -> b l
+    | CondGoto(v, e) -> load_value ~$t0 v @@ bnez ~$t0 e
+    | Comment(s) -> comment s
+    | Binop(i, b, v0, v1) -> load_value ~$t0 v0
+                          @@ load_value ~$t1 v1
+                          @@ (match b with
+                              | Add   -> add
+                              | Mult  -> mul
+                              | Sub   -> sub
+                              | Eq    -> seq
+                              | Neq   -> sne
+                              | Lt    -> slt
+                              | Le    -> sle
+                              | And   -> and_
+                              | Or    -> or_ ) ~$t0 ~$t0 ~$t1
+                          @@ (match find_alloc i with
+                              | Stack(o) -> sw ~$t0 o ~$fp
+                              | Reg(s) -> move s ~$t0 )
+
+    | Value(i, v) ->  match find_alloc i with
+                      | Stack(o) -> load_value ~$t0 v
+                                 @@ sw ~$t0 o ~$fp
+                      | Reg(s) -> load_value s v
   in
 
   let init =
