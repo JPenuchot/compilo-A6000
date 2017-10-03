@@ -42,7 +42,7 @@ and location =
       
 and binop =
   | Add (* +  *) | Mult (* *  *) | Sub (* - *)
-  | Eq  (* == *) | Neq  (* != *)
+  | Eq  (* == *) | Neq  (* != *) | Div (* / *)
   | Lt  (* <  *) | Le   (* <= *)
   | And (* && *) | Or   (* || *)
 
