@@ -31,6 +31,42 @@ rule token = parse
       { END }
   | ";"
       { SEMI }
+
+  | "while"
+      { WHILE }
+  | "for"
+      { FOR }
+  | "if"
+      { IF }
+  | "+"
+      { ADD }
+  | "-"
+      { SUB }
+  | "*"
+      { MULT }
+  | "/"
+      { DIV }
+  | "=="
+      { EQ }
+  | "!="
+      { NEQ }
+  | "&&"
+      { AND }
+  | "||"
+      { OR }
+  | "<"
+      { LT }
+  | "<="
+      { LE }
+  | "=<"
+      { LE }
+  
+  | "then"
+      { THEN }
+  | "else"
+      { ELSE }
+
+
   | _
       { failwith ("Unknown character : " ^ (lexeme lexbuf)) }
   | eof
