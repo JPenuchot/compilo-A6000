@@ -26,14 +26,14 @@ and instruction =
   | Comment  of string                             (* Commentaire             *)
 
 and identifier = string (* Identifiant d'un registre virtuel *)
-    
+
 and value =
   | Literal    of literal    (* Valeur immédiate *)
   | Identifier of identifier (* Registre virtuel *)
 
 
 open Printf
-      
+
 let rec print_block = function
   | []          -> "\n"
   | (l, i) :: b -> sprintf "%s: %s\n%s" l (print_instruction i) (print_block b)
@@ -47,7 +47,7 @@ and print_instruction = function
   | Goto(lab)        -> sprintf "goto %s" lab
   | CondGoto(v, lab) -> sprintf "goto %s when %s" lab (print_value v)
   | Comment(c)       -> sprintf "# %s" c
-    
+
 and print_value = function
   | Literal(lit)   -> SourceAst.print_literal lit
   | Identifier(id) -> id
