@@ -33,9 +33,10 @@ and eval_expression env = function
   | Binop(op, e1, e2) -> let v1 = eval_expression env e1 in
 			 let v2 = eval_expression env e2 in
 			 let op = match op with
-			   | Add  -> (+)
-			   | Mult -> ( * )
-			   | Sub  -> (-)
+			   | Add  ->   ( + )
+			   | Mult ->   ( * )
+         | Div ->    ( / )
+			   | Sub  ->   ( - )
 			   | Eq   -> eval_bool_op (=)
 			   | Neq  -> eval_bool_op (<>)
 			   | Lt   -> eval_bool_op (<)
