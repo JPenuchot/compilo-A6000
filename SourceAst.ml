@@ -77,6 +77,7 @@ let print_binop = function
   | Le   -> "<="
   | And  -> "&&"
   | Or   -> "||"
+  | Div  -> "/"
 let rec print_expression = function
   | Literal lit -> print_literal lit
   | Location id -> print_location id

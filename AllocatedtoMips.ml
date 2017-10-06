@@ -35,6 +35,7 @@ let generate_main p =
                           @@ load_value ~$t1 v1
                           @@ (match b with
                               | Add   -> add
+                              | Div   -> div
                               | Mult  -> mul
                               | Sub   -> sub
                               | Eq    -> seq
