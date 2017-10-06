@@ -87,13 +87,28 @@ let mk_lv p =
        [lv_kill: IrAst.instruction -> VarSet.t]
   *)
   let rec lv_gen : IrAst.instruction -> VarSet.t = function
-    | Print(v) -> VarSet.singleton v
-    | Binop(_, _, Literal(_), Value(v)) -> VarSet.singleton v
-    | Binop(_, _, Value(v), Literal(_)) -> VarSet.singleton v
-    | Binop(_, _, Value(v1), Value(v2)) -> VarSet.add (VarSet.singleton v1) v2
-    | _ -> (* À compléter *) failwith "Not implemented"
+    
+    | Binop(_, _, v1, v2) ->
+      let s1 = match v1 with
+        | Literal(_) -> VarSet.empty
+        | Identifier(i) -> VarSet.singleton i
+      and s2 = match v2 with
+        | Literal(_) -> VarSet.empty
+        | Identifier(i) -> VarSet.singleton i
+      in VarSet.union s1 s2
+    
+    | Print(Identifier(v))
+    | CondGoto(Identifier(v),_)
+    | Value(_, Identifier(v))
+      -> VarSet.singleton v
+    
+    | _ -> VarSet.empty
+
   and lv_kill : IrAst.instruction -> VarSet.t = function
-    | _        -> (* À compléter *) failwith "Not implemented"
+    | Binop(i,_,_,_)
+    | Value(i,_) -> VarSet.singleton i
+
+    | _        -> VarSet.empty
   in
 
   (* Booléen qu'on met à [true] lorsque les tables [lv_in] et [lv_out] sont
