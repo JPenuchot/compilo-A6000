@@ -6,9 +6,20 @@
   let id_or_keyword =
     let h = Hashtbl.create 17 in
     List.iter (fun (s, k) -> Hashtbl.add h s k)
-      [	"integer",  INT;
-	"print",    PRINT;
-	"main",     MAIN;
+      [	
+          "integer",  INT;
+	        "print",    PRINT;
+	        "main",     MAIN;
+          "while",    WHILE;
+          "for",      FOR;
+          "if",       IF;
+          "then",     THEN;
+          "else",     ELSE;
+          "var",      VAR;
+          "integer",  INT;
+          "boolean",  BOOL;
+          "true",     BOOLVAL(true);
+          "false",    BOOLVAL(false);
       ] ;
     fun s ->
       try  Hashtbl.find h s
@@ -21,29 +32,24 @@ let ident = ['a'-'z' '_'] (alpha | '_' | '\'' | digit)*
 let integer = (digit)*
 
 rule token = parse
-  | ['\n' ' ' '\t' '\r']+
+  | ['\n']
       { token lexbuf }
-  | "true" | "false"
-      { BOOLVAL(bool_of_string (lexeme lexbuf)) }
-  | integer
-      { INTVAL(int_of_string (lexeme lexbuf)) }
+  | [' ' '\t' '\r']+
+      { token lexbuf }
+  (*| "true" | "false"*)
+  (*    { BOOLVAL(bool_of_string (lexeme lexbuf)) }*)
   | ident
       { id_or_keyword (lexeme lexbuf) }
+  | integer
+      { INTVAL(int_of_string (lexeme lexbuf)) }
   | "("
       { BEGIN }
   | ")"
       { END }
   | ";"
       { SEMI }
-
-  | "while"
-      { WHILE }
-  | "for"
-      { FOR }
-  | "if"
-      { IF }
-
-
+  | ","
+      { COMMA }
   | "+"
       { ADD }
   | "-"
@@ -66,20 +72,8 @@ rule token = parse
       { LE }
   | "=<"
       { LE }
-  
-  | "then"
-      { THEN }
-  | "else"
-      { ELSE }
-  | "var"
-      { VAR }
   | ":="
       { AFFECT }
-  
-  | "integer"
-      { INT }
-  | "boolean"
-      { BOOL }
   | _
       { failwith ("Unknown character : " ^ (lexeme lexbuf)) }
   | eof

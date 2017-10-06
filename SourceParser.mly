@@ -4,45 +4,38 @@
 
 %}
 
+(* Keywords *)
+%token VAR
+%token SEMI COMMA
+%token PRINT
+%token EOF
+%token MAIN
+%token BEGIN END
+
+(* Loops *)
+%token FOR WHILE IF THEN ELSE
+
+(* Typenames *)
+%token INT BOOL
+
 (* Names & values *)
 %token <string> IDENT
 %token <bool> BOOLVAL
 %token <int> INTVAL
 
-(* Keywords *)
-%token BEGIN END
-%token SEMI
-%token PRINT
-%token EOF
-%token MAIN
-%token VAR
-
-(* Typenames *)
-%token INT
-%token BOOL
-
-(* Loops *)
-%token FOR
-%token WHILE
-%token IF
-%token THEN
-%token ELSE
+(* Affectation *)
+%token AFFECT
 
 (* Binops *)
-%token ADD
-%token SUB
-%token MULT
-%token DIV
+%token AND OR
+%token EQ LT LE NEQ
+%token MULT DIV
+%token ADD SUB
 
-%token EQ
-%token LT
-%token LE
-%token NEQ
-
-%token AND
-%token OR
-
-%token AFFECT
+%left AND OR
+%left EQ LT LE NEQ
+%left ADD SUB
+%left MULT DIV
 
 %start main
 %type <SourceAst.main> main
@@ -51,47 +44,40 @@
 
 main:
 | MAIN; BEGIN; INT; x=IDENT; END;
-  BEGIN; vds=var_decls; is=instructions; END; EOF  {
-    let infox = { typ=TypInteger; kind=FormalX } in
+  BEGIN; vds=var_decls; is=instructions; END; EOF 
+  {
+    let infox = { typ = TypInteger; kind = FormalX } in
     let init  = Symb_Tbl.singleton x infox in
     let union_vars = fun _ _ v -> Some v in
     let locals = Symb_Tbl.union union_vars init vds in
-    {locals = locals; code=is} }
+    { locals = locals; code = is }
+  }
 ;
 
 var_decls:
 | (* empty *)                             { Symb_Tbl.empty }
 
 | VAR; t=typename; id=IDENT; SEMI; vtbl=var_decls
-                                          {
-                                            Symb_Tbl.add id
-                                              { typ = t; kind = Local }
-                                              vtbl
-                                          }
-;
-
-typename:
-| INT                                     { TypInteger }
-| BOOL                                    { TypBoolean }
+  { Symb_Tbl.add id { typ = t; kind = Local } vtbl }
 ;
 
 instructions:
-| (* empty *)                             { []                }
-| i=instruction; SEMI; is=instructions    { i :: is           }
+| (* empty *)                             { [] }
+| i=instruction; SEMI; is=instructions    { i :: is }
 
-(* for(ins; comp; incr) ( blk ) *)
-| FOR; BEGIN;
-  i_start=instruction; SEMI;
-  e=expression; SEMI;
-  i_it=instruction; END
-  BEGIN; blk=instructions; END            {
+(* for ins, comp, incr ( blk ) *)
+| FOR;
+    i_start=instruction; COMMA; e=expression; COMMA; i_it=instruction;
+  BEGIN; blk=instructions; END; is=instructions
+                                          {
                                             i_start ::
-                                            [ While(e, blk @ [i_it]) ]
+                                            [ While(e, blk @ [i_it]) ] @
+                                            is
                                           }
 ;
 
 instruction:
-| PRINT; BEGIN; e=expression; END         { Print(e)          }
+| PRINT; BEGIN; e=expression; END         { Print(e) }
 
 | WHILE; e=expression;
   BEGIN; i=instructions; END              { While(e, i) }
@@ -100,7 +86,7 @@ instruction:
   THEN; BEGIN; i1=instructions; END
   ELSE; BEGIN; i2=instructions; END       { If(e, i1, i2) }
 
-| l=location; AFFECT; e=expression; END   { Set(l, e) }
+| l=location; AFFECT; e=expression        { Set(l, e) }
 ;
 
 expression:
@@ -123,6 +109,11 @@ expression:
 
 | AND;      { And }
 | OR;       { Or }
+;
+
+typename:
+| INT                                     { TypInteger }
+| BOOL                                    { TypBoolean }
 ;
 
 location:
