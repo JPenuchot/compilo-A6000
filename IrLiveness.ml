@@ -29,19 +29,22 @@ let mk_succ code =
 
   (* Parcours du code du programme et remplissage à la volée de la table *)
   let rec mk_succ : IrAst.block -> unit = function
-    | (lab, Goto(       target_lab))  :: (labn, next) :: code
-    | (lab, CondGoto(_, target_lab))  :: (labn, next) :: code ->
-      (* Le seul successeur d'une instruction [Goto] est l'instruction désignée
-	 par l'étiquette de saut. *)
-      Hashtbl.add succ lab target_lab;
-      Hashtbl.add succ lab labn;
-      (* Puis on itère. *)
-      mk_succ ((labn, next) :: code)
+    | (lab, Goto(       target_lab)) :: code
+    | (lab, CondGoto(_, target_lab)) :: code ->
 
-    | (lab, _) :: (labn, next) :: code ->
-      Hashtbl.add succ lab labn;
-      mk_succ ((labn, next) :: code)
-    | _::[] | [] -> ()
+      Hashtbl.add succ lab target_lab;
+      (
+        match code with
+        | (labn, next) :: tl -> Hashtbl.add succ lab labn; mk_succ code
+        | [] -> ()
+      )
+    | (lab, _) :: code ->
+      (
+        match code with
+        | (labn, next) :: tl -> Hashtbl.add succ lab labn; mk_succ code
+        | [] -> ()
+      )
+    | [] -> ()
   in
   mk_succ code;
   (* À la fin, on renvoie la table qu'on a remplie *)
