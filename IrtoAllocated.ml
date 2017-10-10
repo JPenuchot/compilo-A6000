@@ -12,10 +12,10 @@ let allocate_main reg_flag p =
       (* Tout sur la pile *)
       S.Symb_Tbl.mapi (fun id (info: S.identifier_info) ->
 	match info with
-	  | FormalX -> 
+	  | FormalX ->
         current_offset := !current_offset - 4;
         T.Stack (0)
-	  | Local   -> 
+	  | Local   ->
         current_offset := !current_offset - 4;
         T.Stack !current_offset
       ) p.S.locals
