@@ -23,9 +23,9 @@ let dce_step p =
   let live_instr = function
     | (lab, ins) ->
       match ins with
-      | Value(i,_) | Binop(i,_,_,_) -> VarSet.equal
-      (VarSet.diff (VarSet.singleton i) (Hashtbl.find lv_out lab))
-      VarSet.empty
+      | Value(i,_) | Binop(i,_,_,_) ->
+      (VarSet.diff
+        (VarSet.singleton i) (Hashtbl.find lv_out lab)) == VarSet.empty
       | _ -> true
   in
   (* Filtre la liste pour ne garder que les instructions vivantes *)
