@@ -29,18 +29,20 @@ let mk_succ code =
 
   (* Parcours du code du programme et remplissage à la volée de la table *)
   let rec mk_succ : IrAst.block -> unit = function
-    (* Cas offert : instruction [Goto] *)
-    | (lab, Goto(target_lab)) :: code ->
+    | (lab, Goto(       target_lab))  :: (labn, next) :: code 
+    | (lab, CondGoto(_, target_lab))  :: (labn, next) :: code ->
       (* Le seul successeur d'une instruction [Goto] est l'instruction désignée
 	 par l'étiquette de saut. *)
       Hashtbl.add succ lab target_lab;
+      Hashtbl.add succ lab labn;
       (* Puis on itère. *)
-      mk_succ code
-    | (lab, CondGoto(_, target_lab)) :: code ->
-      Hashtbl.add succ lab target_lab;
-      mk_succ code
-    | _ :: code -> mk_succ code
-    | [] -> ()
+      mk_succ ((labn, next) :: code)
+
+    | (lab, _) :: (labn, next) :: code ->
+      Hashtbl.add succ lab labn;
+      mk_succ ((labn, next) :: code)
+
+    | _::[] -> ()
   in
   mk_succ code;
   (* À la fin, on renvoie la table qu'on a remplie *)
@@ -87,16 +89,11 @@ let mk_lv p =
        [lv_kill: IrAst.instruction -> VarSet.t]
   *)
   let rec lv_gen : IrAst.instruction -> VarSet.t = function
-    
     | Binop(_, _, v1, v2) ->
-      let s1 = match v1 with
+      let helper = function
         | Literal(_) -> VarSet.empty
         | Identifier(i) -> VarSet.singleton i
-      and s2 = match v2 with
-        | Literal(_) -> VarSet.empty
-        | Identifier(i) -> VarSet.singleton i
-      in VarSet.union s1 s2
-    
+      in VarSet.union (helper v1) (helper v2)
     | Print(Identifier(v))
     | CondGoto(Identifier(v),_)
     | Value(_, Identifier(v))
@@ -107,7 +104,7 @@ let mk_lv p =
   and lv_kill : IrAst.instruction -> VarSet.t = function
     | Binop(i,_,_,_)
     | Value(i,_) -> VarSet.singleton i
-
+    
     | _        -> VarSet.empty
   in
 
@@ -131,7 +128,7 @@ let mk_lv p =
   let lv_step_instruction (lab, instr) =
     (* Récupération de la liste des successeurs *)
     let succs = Hashtbl.find_all succ lab in
-    (* À compléter *)
+    
     ()
   in
 
