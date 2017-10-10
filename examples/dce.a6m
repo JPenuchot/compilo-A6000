@@ -1,0 +1,7 @@
+main(integer x) (
+  var integer s;
+  s := 0;
+  s := s + 1;
+
+  print(x);
+)
