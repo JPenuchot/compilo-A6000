@@ -29,7 +29,7 @@ let mk_succ code =
 
   (* Parcours du code du programme et remplissage à la volée de la table *)
   let rec mk_succ : IrAst.block -> unit = function
-    | (lab, Goto(       target_lab))  :: (labn, next) :: code 
+    | (lab, Goto(       target_lab))  :: (labn, next) :: code
     | (lab, CondGoto(_, target_lab))  :: (labn, next) :: code ->
       (* Le seul successeur d'une instruction [Goto] est l'instruction désignée
 	 par l'étiquette de saut. *)
@@ -41,8 +41,7 @@ let mk_succ code =
     | (lab, _) :: (labn, next) :: code ->
       Hashtbl.add succ lab labn;
       mk_succ ((labn, next) :: code)
-
-    | _::[] -> ()
+    | _::[] | [] -> ()
   in
   mk_succ code;
   (* À la fin, on renvoie la table qu'on a remplie *)
@@ -98,13 +97,11 @@ let mk_lv p =
     | CondGoto(Identifier(v),_)
     | Value(_, Identifier(v))
       -> VarSet.singleton v
-    
     | _ -> VarSet.empty
 
   and lv_kill : IrAst.instruction -> VarSet.t = function
     | Binop(i,_,_,_)
-    | Value(i,_) -> VarSet.singleton i
-    
+    | Value(i,_)      -> VarSet.singleton i
     | _        -> VarSet.empty
   in
 
@@ -127,14 +124,30 @@ let mk_lv p =
   *)
   let lv_step_instruction (lab, instr) =
     (* Récupération de la liste des successeurs *)
-    let succs = Hashtbl.find_all succ lab in
-    
-    ()
+    let succs = Hashtbl.find_all succ lab
+    (* Récupération de la liste des gens/kills *)
+    and gens = lv_gen instr
+    and kills = lv_kill instr
+    (* Récupération des ins/outs DANS LES TABLES *)
+    and stored_outs = Hashtbl.find lv_out lab
+    and stored_ins = Hashtbl.find lv_in lab
+  in
+    let nouts =  List.fold_left (fun acc succ ->
+      VarSet.union acc (Hashtbl.find lv_out succ) ) VarSet.empty succs
+  in
+    let nins = VarSet.union (VarSet.diff nouts kills) gens
+  in
+    change := (!change) || nins <> stored_ins || nouts <> stored_outs;
+    (* Update tables *)
+    Hashtbl.remove lv_out lab;
+    Hashtbl.add lv_out lab nouts;
+    Hashtbl.remove lv_in lab;
+    Hashtbl.add lv_in lab nins
   in
 
   (* Une passe complète : met à jour une fois chaque instruction *)
   let lv_step_main () =
-    List.iter lv_step_instruction code
+    List.iter lv_step_instruction (List.rev code)
   in
   (* Répéter tant qu'il reste des changements *)
   while !change do

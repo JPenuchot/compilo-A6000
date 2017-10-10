@@ -8,7 +8,7 @@ open IrLiveness
      [dce_step: IrAst.main -> bool * IrAst.main]
  *)
 let dce_step p =
-  
+
   (* Calcul des informations de vivacité *)
   let _, lv_out = mk_lv p in
 
@@ -21,17 +21,23 @@ let dce_step p =
      Toutes les autres sont vivantes.
   *)
   let live_instr = function
-    (* À compléter *)
-    | _ -> true
+    | (lab, ins) ->
+      match ins with
+      | Value(i,_) | Binop(i,_,_,_) -> VarSet.equal
+      (VarSet.diff (VarSet.singleton i) (Hashtbl.find lv_out lab))
+      VarSet.empty
+      | _ -> true
   in
-  
   (* Filtre la liste pour ne garder que les instructions vivantes *)
   let filtered_code = List.filter live_instr p.code in
   (* Renvoie le booléen et le code simplifié *)
   List.length p.code <> List.length filtered_code, { p with code=filtered_code }
 
-    
+
 (* Élimination itérée *)
 let rec dce p =
-  (* À compléter *)
-  p
+  let ismodified, np = dce_step p in
+  if ismodified then
+    dce np
+  else
+    np
