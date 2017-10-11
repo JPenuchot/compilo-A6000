@@ -96,9 +96,7 @@ let mk_lv p =
         | Literal(_) -> VarSet.empty
         | Identifier(i) -> VarSet.singleton i
       in VarSet.union (helper v1) (helper v2)
-    | Print(Identifier(v))
-    | CondGoto(Identifier(v),_)
-    | Value(_, Identifier(v))
+    | Print(Identifier(v)) | CondGoto(Identifier(v),_) | Value(_, Identifier(v))
       -> VarSet.singleton v
     | _ -> VarSet.empty
 
