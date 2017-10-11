@@ -1,6 +1,6 @@
 main(integer x) (
   var integer s;
-  for s := 0, s < x, s := s + 1 (
+  for s := 0, s < x, s +:= 1 (
     print(s);
   )
 )
