@@ -1,4 +1,4 @@
-# [Compilo A6000](https://github.com/JPenuchot/compilo-a6000)
+# [Compilo A6000 - Jules Pénuchot](https://github.com/JPenuchot/compilo-a6000)
 
 A6000 est un langage créé à l'occasion du développement d'un compilateur dans le cadre de l'UE de compilation de [Thibaut Balabonski](https://www.lri.fr/~blsk/). Sa syntaxe et ses fonctionnalités sont relativement basique, il ne permet pas encore de créer des fonctions mais les boucles, variables ainsi qu'une fonction `print` ont été implémentées.
 
