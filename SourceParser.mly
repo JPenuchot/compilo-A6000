@@ -87,6 +87,7 @@ instruction:
   ELSE; BEGIN; i2=instructions; END       { If(e, i1, i2) }
 
 | l=location; AFFECT; e=expression        { Set(l, e) }
+| l=location; b=binop;AFFECT;e=expression { Set(l, Binop(b, Location(l), e)) }
 ;
 
 expression:
