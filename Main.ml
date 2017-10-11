@@ -51,7 +51,7 @@ let () =
       then IrDeadCodeElim.dce p
       else p
     in
-    
+
     let p = IrtoAllocated.allocate_main !reg_allocation p in
     let asm = AllocatedtoMips.generate_main p in
     let output_file = (Filename.chop_suffix file ".a6m") ^ ".asm" in
