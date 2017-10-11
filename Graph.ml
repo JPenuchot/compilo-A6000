@@ -10,7 +10,7 @@ let int_map_update key map default f =
       IntMap.add key (f v) map
   with Not_found ->
     IntMap.add key (f default) map
-      
+
 (** A type for maps whose keys are node labels. *)
 module NodeMap = Map.Make (String)
 let nodelabel_map_update key map default f =
