@@ -17,7 +17,7 @@ type main = {
 
 and block = (label * instruction) list
 and instruction =
-(* Comme Set(); ex : Valut(id, Literal(5)) se traduit par
+(* Comme Set(); ex : Value(id, Literal(5)) se traduit par
  * id := 5; *)
   | Value    of identifier * value                 (* Chargement d'une valeur *)
   | Binop    of identifier * binop * value * value (* Opération binaire       *)
