@@ -32,7 +32,6 @@ let interference_graph p : Graph.t =
   (* D'abord, définir le graphe sans arêtes contenant un sommet pour chaque
      identifiant de la table des symboles. *)
   let g =
-    let st = p.locals in
     IrAst.Symb_Tbl.fold(fun id (info: identifier_info) g -> 
       match info with
     | FormalX -> g
