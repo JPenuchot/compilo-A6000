@@ -43,10 +43,12 @@ let generate_main p =
                               | Lt    -> slt
                               | Le    -> sle
                               | And   -> and_
-                              | Or    -> or_ ) ~$t0 ~$t0 ~$t1
+                              | Or    -> or_
+                            ) ~$t0 ~$t0 ~$t1
                           @@ (match find_alloc i with
                               | Stack(o) -> sw ~$t0 o ~$fp
-                              | Reg(s) -> move s ~$t0 )
+                              | Reg(s) -> move s ~$t0
+                            )
 
     | Value(i, v) ->  match find_alloc i with
                       | Stack(o) -> load_value ~$t0 v
