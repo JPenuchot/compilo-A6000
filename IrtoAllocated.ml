@@ -1,6 +1,7 @@
 module S = IrAst
 module T = AllocatedAst
 module IG = IrInterferenceGraph
+module GC = GraphColoring
 
 (* Allocation *)
 let allocate_main reg_flag p =
@@ -8,12 +9,11 @@ let allocate_main reg_flag p =
 
   let tbl =
     if reg_flag then
-      (* Initialisation du graphe *)
       let ig = IG.interference_graph p in
-      failwith "ok"
+      Graph.dump ig;
+      failwith "L'allocation des registres marche pas, ok ? \
+      Pas la peine d'essayer."
 
-      (* Création des relations *)
-      
       (* Coloration du graphe *)
 
       (* Assignation des emplacements de variables *)
