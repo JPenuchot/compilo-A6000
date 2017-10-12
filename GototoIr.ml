@@ -14,7 +14,7 @@ let flatten_main p =
   let add_symb s =
     symb_tbl := T.Symb_Tbl.add s (Local: T.identifier_info) !symb_tbl;
   in
-  
+
   (* new_tmp: unit -> string *)
   (* Un appel [new_tmp()] crée un nouvel identifiant de registre virtuel
      et l'ajoute à la table des symboles. *)
@@ -31,7 +31,7 @@ let flatten_main p =
   let rec flatten_block = function
     | []   -> []
     | i::b -> flatten_instruction i @ (flatten_block b)
-      
+
   (* flatten_instruction: S.instruction -> T.instruction list *)
   and flatten_instruction = function
     | S.Set(Identifier(l), e) ->
@@ -46,7 +46,7 @@ let flatten_main p =
       let ce, ve = flatten_expression e in
       ce @ [ T.CondGoto(ve, l)]
     | S.Comment(s)  -> [ T.Comment(s) ]
-	
+
   (* flatten_expression: S.expression -> T.instruction list -> T.value *)
   (* Appliquée à une expression, [flatten_expression] renvoie une liste
      d'instructions calculant le résultat de cette expression, ainsi qu'une
@@ -59,13 +59,13 @@ let flatten_main p =
   *)
   and flatten_expression : S.expression -> T.instruction list * T.value =
     function
-      | Location(Identifier id) -> [], T.Identifier(id)
-      | Literal(l) -> [], T.Literal(l)
-      | Binop (b, e1, e2) ->
-          let id = new_tmp ()
-          and (l1, v1) = (flatten_expression e1)
-          and (l2, v2) = (flatten_expression e2) in
-          (l1 @ l2 @ [ Binop(id, b, v1, v2) ], T.Identifier(id))
+    | Location(Identifier id) -> [], T.Identifier(id)
+    | Literal(l) -> [], T.Literal(l)
+    | Binop (b, e1, e2) ->
+      let id = new_tmp ()
+      and (l1, v1) = (flatten_expression e1)
+      and (l2, v2) = (flatten_expression e2) in
+      (l1 @ l2 @ [ Binop(id, b, v1, v2) ], T.Identifier(id))
   in
 
   (* label_instruction: T.instruction -> T.label * T.instruction *)
@@ -75,14 +75,14 @@ let flatten_main p =
   let label_instruction =
     let cpt = ref 0 in
     fun i -> let lab = Printf.sprintf "_main_%d" !cpt in
-	     incr cpt;
-	     match i with
-	       (* On force une correspondance entre étiquette de saut
-		  et étiquette d'analyse. *)
-	       | T.Label l -> l, i
-	       | _         -> lab, i
+      incr cpt;
+      match i with
+      (* On force une correspondance entre étiquette de saut
+         et étiquette d'analyse. *)
+      | T.Label l -> l, i
+      | _         -> lab, i
   in
 
   let flattened_code = flatten_block p.S.code in
   { T.locals = !symb_tbl; T.code = List.map label_instruction flattened_code }
-  
+

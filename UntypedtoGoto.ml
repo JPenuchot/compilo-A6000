@@ -17,28 +17,28 @@ let destructure_main p =
   let rec destructure_block = function
     | []     -> []
     | i :: b -> destructure_instruction i @ (destructure_block b)
-      
+
   (* destructure_instruction: S.instruction -> T.block *)
   and destructure_instruction : S.instruction -> T.block = function
     | Print(e)  -> [ T.Print(e)  ]
     | Set(l, e) -> [ T.Set(l, e) ]
-    
+
     | While(e, b) ->
-      
+
       let test_label = new_label()
       and code_label = new_label()
-    in
+      in
       [ T.Goto(test_label);
         T.Label(code_label) ]
       @ (destructure_block b)
       @ [ T.Label(test_label);
           T.CondGoto(e, code_label) ]
-    
+
     | If(e, b1, b2) ->
 
       let b1_label = new_label()
       and end_label = new_label()
-    in
+      in
       [ T.CondGoto(e, b1_label) ]
       @ (destructure_block b2)
       @ [ T.Goto(end_label);

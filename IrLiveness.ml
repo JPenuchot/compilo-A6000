@@ -3,7 +3,7 @@ open IrAst
 (* Création du graphe de flot de contrôle, sous la forme d'une table associant
    à chaque étiquette d'un point de programme les étiquettes de ses successeurs.
      [mk_succ: IrAst.block -> (IrAst.label * IrAst.label) Hashtbl.t]
-   
+
    Note à propos des tables [Hashtbl] de Caml :
 
    - un appel [Hashtbl.add tbl k v] ajoute à la table [tbl] une association
@@ -61,7 +61,7 @@ let mk_succ code =
      ensemblistes.
 *)
 module VarSet = Set.Make(String)
-  
+
 (* Fonction principale, renvoie deux tables associant à chaque étiquette d'un
    point de programme l'ensemble des variables vivantes en entrée/en sortie.
      [mk_lv: IrAst.main ->
@@ -80,9 +80,9 @@ let mk_lv p =
   (* Initialisation des tables [lv_in] et [lv_out],
      associe [VarSet.empty] à chaque point de programme. *)
   List.iter (fun (lab, _) ->
-    Hashtbl.add lv_in  lab VarSet.empty;
-    Hashtbl.add lv_out lab VarSet.empty
-  ) code;
+      Hashtbl.add lv_in  lab VarSet.empty;
+      Hashtbl.add lv_out lab VarSet.empty
+    ) code;
 
   (* Les fonctions [lv_gen] et [lv_kill] prennent en paramètre une instruction
      et indiquent respectivement l'ensemble des variables vivantes qu'elle
@@ -132,12 +132,12 @@ let mk_lv p =
     (* Récupération des ins/outs DANS LES TABLES *)
     and stored_outs = Hashtbl.find lv_out lab
     and stored_ins = Hashtbl.find lv_in lab
-  in
+    in
     let nouts =  List.fold_left (fun acc succ ->
-      VarSet.union acc (Hashtbl.find lv_out succ) ) VarSet.empty succs
-  in
+        VarSet.union acc (Hashtbl.find lv_out succ) ) VarSet.empty succs
+    in
     let nins = VarSet.union (VarSet.diff nouts kills) gens
-  in
+    in
     change := (!change) || nins <> stored_ins || nouts <> stored_outs;
     (* Update tables *)
     Hashtbl.remove lv_out lab;

@@ -6,7 +6,7 @@ open IrLiveness
    où le booléen [b] vaut [true] si au moins une instruction a été
    éliminée.
      [dce_step: IrAst.main -> bool * IrAst.main]
- *)
+*)
 let dce_step p =
 
   (* Calcul des informations de vivacité *)
@@ -24,8 +24,8 @@ let dce_step p =
     | (lab, ins) ->
       match ins with
       | Value(i,_) | Binop(i,_,_,_) ->
-      (VarSet.diff
-        (VarSet.singleton i) (Hashtbl.find lv_out lab)) == VarSet.empty
+        (VarSet.diff
+           (VarSet.singleton i) (Hashtbl.find lv_out lab)) == VarSet.empty
       | _ -> true
   in
   (* Filtre la liste pour ne garder que les instructions vivantes *)

@@ -10,7 +10,7 @@ let generate_main p =
     try  AllocatedAst.Symb_Tbl.find id symb_tbl
     with Not_found -> failwith (Printf.sprintf "Node %s not found" id)
   in
-  
+
   let rec generate_block = function
     | []       -> nop
     | (l,i)::b -> comment l @@ generate_instr i @@ generate_block b
@@ -19,8 +19,8 @@ let generate_main p =
      dans le registre [r]. *)
   and load_value r : AllocatedAst.value -> 'a Mips.asm = function
     | Identifier(id) -> (match find_alloc id with
-	| Stack o -> lw r o ~$fp
-	| Reg r1 -> move r r1)
+        | Stack o -> lw r o ~$fp
+        | Reg r1 -> move r r1)
     | Literal(Int(i)) -> li r i
     | Literal(Bool(true)) -> li r 1
     | Literal(Bool(false)) -> li r 0
@@ -32,28 +32,28 @@ let generate_main p =
     | CondGoto(v, e) -> load_value ~$t0 v @@ bnez ~$t0 e
     | Comment(s) -> comment s
     | Binop(i, b, v0, v1) -> load_value ~$t0 v0
-                          @@ load_value ~$t1 v1
-                          @@ (match b with
-                              | Add   -> add
-                              | Div   -> div
-                              | Mult  -> mul
-                              | Sub   -> sub
-                              | Eq    -> seq
-                              | Neq   -> sne
-                              | Lt    -> slt
-                              | Le    -> sle
-                              | And   -> and_
-                              | Or    -> or_
-                            ) ~$t0 ~$t0 ~$t1
-                          @@ (match find_alloc i with
-                              | Stack(o) -> sw ~$t0 o ~$fp
-                              | Reg(s) -> move s ~$t0
-                            )
+      @@ load_value ~$t1 v1
+      @@ (match b with
+          | Add   -> add
+          | Div   -> div
+          | Mult  -> mul
+          | Sub   -> sub
+          | Eq    -> seq
+          | Neq   -> sne
+          | Lt    -> slt
+          | Le    -> sle
+          | And   -> and_
+          | Or    -> or_
+        ) ~$t0 ~$t0 ~$t1
+      @@ (match find_alloc i with
+          | Stack(o) -> sw ~$t0 o ~$fp
+          | Reg(s) -> move s ~$t0
+        )
 
     | Value(i, v) ->  match find_alloc i with
-                      | Stack(o) -> load_value ~$t0 v
-                                 @@ sw ~$t0 o ~$fp
-                      | Reg(s) -> load_value s v
+      | Stack(o) -> load_value ~$t0 v
+        @@ sw ~$t0 o ~$fp
+      | Reg(s) -> load_value s v
   in
 
   let init =
@@ -66,7 +66,7 @@ let generate_main p =
   in
 
   let close = li v0 10 @@ syscall in
-  
+
   let built_ins =
     label "atoi"
     @@ move t0 a0
@@ -91,6 +91,6 @@ let generate_main p =
     @@ move v0 t1
     @@ jr   ra
   in
-  
+
   let asm = generate_block p.code in
   { text = init @@ asm @@ close @@ built_ins; data = nop }

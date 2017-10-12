@@ -17,8 +17,8 @@ type main = {
 
 and block = (label * instruction) list
 and instruction =
-(* Comme Set(); ex : Value(id, Literal(5)) se traduit par
- * id := 5; *)
+  (* Comme Set(); ex : Value(id, Literal(5)) se traduit par
+   * id := 5; *)
   | Value    of identifier * value                 (* Chargement d'une valeur *)
   | Binop    of identifier * binop * value * value (* Opération binaire       *)
   | Print    of value                              (* Affichage               *)
@@ -43,7 +43,8 @@ let rec print_block = function
 and print_instruction = function
   | Value(dest, v)   -> sprintf "%s <- %s" dest (print_value v)
   | Binop(dest, op, v1, v2) -> sprintf "%s <- %s %s %s"
-    dest (print_value v1) (SourceAst.print_binop op) (print_value v2)
+                                 dest (print_value v1)
+                                 (SourceAst.print_binop op) (print_value v2)
   | Print(v)         -> sprintf "print(%s)" (print_value v)
   | Label(lab)       -> lab
   | Goto(lab)        -> sprintf "goto %s" lab
