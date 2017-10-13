@@ -15,45 +15,66 @@ let generate_main p =
     | []       -> nop
     | (l,i)::b -> comment l @@ generate_instr i @@ generate_block b
 
+  (* Un appel [load_literal r v] génère du code qui place la valeur
+       immédiate [v] dans le registre [r]. *)
+  and load_literal r : AllocatedAst.literal -> 'a Mips.asm = function
+    | Int(i)  -> li r i
+    | Bool(b) -> let i = if b then -1 else 0 in li r i
+
   (* Un appel [load_value r v] génère du code qui place la valeur [v]
      dans le registre [r]. *)
   and load_value r : AllocatedAst.value -> 'a Mips.asm = function
+    | Literal(lit)   -> load_literal r lit
     | Identifier(id) -> (match find_alloc id with
-        | Stack o -> lw r o ~$fp
-        | Reg r1 -> move r r1)
-    | Literal(Int(i)) -> li r i
-    | Literal(Bool(true)) -> li r 1
-    | Literal(Bool(false)) -> li r 0
+        | Reg r'  -> move r r'
+        | Stack o -> lw r o ~$fp)
+
+  and load_operand r : AllocatedAst.value -> Mips.register * 'a Mips.asm =
+    function
+    | Literal(lit)   -> r, load_literal r lit
+    | Identifier(id) ->
+      (match find_alloc id with
+       | Reg r'  -> r', nop
+       | Stack o -> r, lw r o ~$fp
+      )
+  (* Spécialisations pour les premier et second opérandes d'une opération. *)
+  and load_first_operand v  = load_operand ~$t0 v
+  and load_second_operand v = load_operand ~$t1 v
 
   and generate_instr : AllocatedAst.instruction -> 'a Mips.asm = function
-    | Print(v)  -> load_value ~$a0 v @@ li ~$v0 11 @@ syscall
-    | Label(l)  -> label l
-    | Goto(l)   -> b l
-    | CondGoto(v, e) -> load_value ~$t0 v @@ bnez ~$t0 e
-    | Comment(s) -> comment s
-    | Binop(i, b, v0, v1) -> load_value ~$t0 v0
-      @@ load_value ~$t1 v1
-      @@ (match b with
-          | Add   -> add
-          | Div   -> div
-          | Mult  -> mul
-          | Sub   -> sub
-          | Eq    -> seq
-          | Neq   -> sne
-          | Lt    -> slt
-          | Le    -> sle
-          | And   -> and_
-          | Or    -> or_
-        ) ~$t0 ~$t0 ~$t1
-      @@ (match find_alloc i with
-          | Stack(o) -> sw ~$t0 o ~$fp
-          | Reg(s) -> move s ~$t0
-        )
+    | Value(dest, v) ->
+      (match find_alloc dest with
+       | Reg r   -> load_value r v
+       | Stack o -> let r, a = load_first_operand v in
+         a @@ sw r o ~$fp
+      )
 
-    | Value(i, v) ->  match find_alloc i with
-      | Stack(o) -> load_value ~$t0 v
-        @@ sw ~$t0 o ~$fp
-      | Reg(s) -> load_value s v
+    | Binop(dest, op, o1, o2) ->
+      let op = match op with
+        | Add  -> add
+        | Sub  -> sub
+        | Mult -> mul
+        | Div -> div
+        | Eq   -> seq
+        | Neq  -> sne
+        | Lt   -> slt
+        | Le   -> sle
+        | And  -> and_
+        | Or   -> or_
+      in
+      let (r1, a1) = load_first_operand o1 in
+      let (r2, a2) = load_second_operand o2 in
+      let aop = match find_alloc dest with
+        | Reg r   -> op r r1 r2
+        | Stack o -> op ~$t0 r1 r2 @@ sw ~$t0 o ~$fp
+      in
+      a1 @@ a2 @@ aop
+
+    | Print(v)        -> load_value ~$a0 v @@ li ~$v0 11 @@ syscall
+    | Label(lab)      -> label lab
+    | Goto(lab)       -> b lab
+    | CondGoto(v,lab) -> load_value ~$t0 v @@ bnez ~$t0 lab
+    | Comment(s)      -> comment s
   in
 
   let init =
