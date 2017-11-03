@@ -3,3 +3,4 @@
 *.byte
 *.native
 _build/
+*.conflicts
