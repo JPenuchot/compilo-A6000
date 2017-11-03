@@ -4,3 +4,5 @@
 *.native
 _build/
 *.conflicts
+*~
+*.html
