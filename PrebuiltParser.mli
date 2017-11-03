@@ -35,4 +35,4 @@ exception Error
 
 (* The monolithic API. *)
 
-val main: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (SourceAst.main)
+val main: (Lexing.lexbuf -> token) -> Lexing.lexbuf -> (SourceAst.program)
