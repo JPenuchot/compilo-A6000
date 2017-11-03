@@ -13,7 +13,7 @@ main(integer x) (
   continue := true;
   i := 0;
 
-  while continue (
+  while (continue) (
     continue := false;
     j := 0;
     while j < x+1 (
