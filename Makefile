@@ -1,7 +1,8 @@
 
 .PHONY: 	all clean byte native profile debug sanity test
 
-OCB_FLAGS   = -cflag -w -cflag -40 -use-ocamlfind -use-menhir
+OCB_FLAGS   = -cflag -w -cflag -40 -use-ocamlfind -use-menhir \
+							-menhir "menhir --explain"	#	Menhir conflict explaination
 OCB = ocamlbuild $(OCB_FLAGS)
 
 all: native byte # profile debug
