@@ -6,7 +6,6 @@ let usage = "usage: compilo [options] file.a6m"
 let interpret      = ref false
 let reg_allocation = ref false
 let dead_code_elim = ref false
-let prebuilt_frontend = ref false
 let input = ref 0
 
 let spec =
@@ -16,7 +15,6 @@ let spec =
     "  full optimisation";
     "-i", Arg.Tuple [Arg.Set_int input; Arg.Set interpret],
     "  interpreter only";
-    "-frontend", Arg.Set prebuilt_frontend, "  use prebuilt frontend"
   ]
 
 let file = 
