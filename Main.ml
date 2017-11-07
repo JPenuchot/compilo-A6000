@@ -32,12 +32,8 @@ let file =
 let () =
   let c  = open_in file in
   let lb = Lexing.from_channel c in
-  let p  = if !prebuilt_frontend
-    then PrebuiltParser.main PrebuiltLexer.token lb
-    else SourceParser.main SourceLexer.token lb
-  in
-  close_in c;
-  SourceTypeChecker.typecheck_main p;
+  let p  = SourceParser.main SourceLexer.token lb
+  in close_in c; SourceTypeChecker.typecheck_main p;
   if !interpret
   then let _ = SourceInterpreter.eval_main p !input in ()
   else begin
