@@ -2,23 +2,29 @@
 
 module Symb_Tbl = Map.Make(String)
 
-(* Programme principal : une table de symboles et un bloc de code *)
-type main = {
-  locals: identifier_info Symb_Tbl.t;
-  code: block;
-}
-
 (* La table des symboles contient, pour chaque variable :
    - sa nature  : variable locale ou paramètre formel
    - son type : entier ou booléen
 *)
+
+type program = function_info Symb_Tbl.t
+
+and call = string * expression list
+
+and function_info = { 
+  return:  typ option;
+  formals: typ list;
+  locals:  identifier_info Symb_Tbl.t;
+  code:    block
+}
 and identifier_kind =
-  | Local   (* Variable locale    *)
-  | FormalX (* Paramètre formel x *)
-and identifier_info = { typ: typ; kind: identifier_kind }
+  | Local           (* Variable locale    *)
+  | Formal of int   (* Paramètre formel x *)
+  | Return          (* Variable de retour *)
 and typ =
   | TypInteger
   | TypBoolean
+and identifier_info = { typ: typ; kind: identifier_kind }
 
 (* Un bloc de code est une liste d'instructions *)
 and block = instruction list
@@ -26,12 +32,14 @@ and instruction =
   | Set   of location   * expression    (* Affectation *)
   | While of expression * block         (* Boucle      *)
   | If    of expression * block * block (* Branchement *)
+  | PCall of call
   | Print of expression                 (* Affichage   *)
 
 and expression =
-  | Literal   of literal                         (* Valeur immédiate   *)
-  | Location  of location                        (* Valeur en mémoire  *)
-  | Binop     of binop * expression * expression (* Opération binaire  *)
+  | Literal   of literal                          (* Valeur immédiate   *)
+  | Location  of location                         (* Valeur en mémoire  *)
+  | Binop     of binop * expression * expression  (* Opération binaire  *)
+  | Call      of call                             (* Appel de fonction  *)
 
 and literal =
   | Int  of int  (* Constante entière   *)
@@ -39,13 +47,13 @@ and literal =
 
 and location =
   | Identifier of string (* Variable en mémoire *)
+  | Void
 
 and binop =
   | Add (* +  *) | Mult (* *  *) | Sub (* - *)
   | Eq  (* == *) | Neq  (* != *) | Div (* / *)
   | Lt  (* <  *) | Le   (* <= *)
   | And (* && *) | Or   (* || *)
-
 
 (* Cadeau pour le débogage : un afficheur.
    [print_main m] produit une chaîne de caractère représentant le programme
