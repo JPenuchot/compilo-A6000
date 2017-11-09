@@ -30,16 +30,16 @@ let file =
 let () =
   let c  = open_in file in
   let lb = Lexing.from_channel c in
-  let p  = SourceParser.main SourceLexer.token lb
-  in close_in c; SourceTypeChecker.typecheck_main p;
+  let p  = SourceParser.prog SourceLexer.token lb
+  in close_in c; SourceTypeChecker.typecheck_prog p;
   if !interpret
-  then let _ = SourceInterpreter.eval_main p !input in ()
+  then let _ = SourceInterpreter.eval_prog p !input in ()
   else begin
-    let p = SourcetoUntyped.erase_main p in
-    let p = UntypedtoGoto.destructure_main p in
-    let p = GototoIr.flatten_main p in
+    let p = SourcetoUntyped.erase_prog p in
+    let p = UntypedtoGoto.destructure_prog p in
+    let p = GototoIr.flatten_prog p in
 
-    (* Code à réintégrer à la séance 3 *)
+    (* Dead code elimination *)
     let p =
       if   !dead_code_elim
       then IrDeadCodeElim.dce p
@@ -47,7 +47,7 @@ let () =
     in
 
     let p = IrtoAllocated.allocate_main !reg_allocation p in
-    let asm = AllocatedtoMips.generate_main p in
+    let asm = AllocatedtoMips.generate_prog p in
     let output_file = (Filename.chop_suffix file ".a6m") ^ ".asm" in
     let out = open_out output_file in
     let outf = formatter_of_out_channel out in
