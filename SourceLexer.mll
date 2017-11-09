@@ -9,7 +9,6 @@
       [	
           "integer",  INT;
 	        "print",    PRINT;
-	        (*"main",     MAIN;*)
           "while",    WHILE;
           "for",      FOR;
           "if",       IF;
