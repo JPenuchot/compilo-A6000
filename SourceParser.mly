@@ -89,7 +89,7 @@ fun_decls:
 
 
 parameters:
-| (* empty *)                             { (Symb_Tbl.empty, [], 0) }
+| (* empty *)                             { (Symb_Tbl.empty, [], 1) }
 | p=parameters; COMMA;tp=typename; id=IDENT;
   { 
     let (st, pl, num) = p in
