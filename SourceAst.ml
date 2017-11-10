@@ -47,7 +47,6 @@ and literal =
 
 and location =
   | Identifier of string (* Variable en mémoire *)
-  | Void
 
 and binop =
   | Add (* +  *) | Mult (* *  *) | Sub (* - *)
@@ -92,9 +91,15 @@ let rec print_expression = function
   | Binop(op, e1, e2) ->
     sprintf "( %s %s %s )"
       (print_expression e1) (print_binop op) (print_expression e2)
+  | Call(c) ->
+    print_call c
+and print_call (name, elist) =
+  sprintf "%s ( " name ^
+  List.fold_left (fun acc expr -> acc ^ (print_expression expr)) "" elist ^
+  sprintf " )"
 
-let offset o = String.make (2*o) ' '
-let rec print_block o = function
+and offset o = String.make (2*o) ' '
+and print_block o = function
   | [] -> ""
   | i::b -> (offset o) ^ (print_instruction o i) ^ ";\n" ^ (print_block o b)
 and print_instruction o = function
@@ -109,6 +114,7 @@ and print_instruction o = function
       (print_block (o+1) b1) (offset o)
       (print_block (o+1) b2) (offset o)
   | Print(e) -> sprintf "print(%s)" (print_expression e)
+  | PCall(c) -> print_call c
 
 let print_main m =
   sprintf "main(int x) (\n%s%s)\n"

@@ -7,7 +7,7 @@ module T = UntypedAst (* Cible de la transformation  *)
 (* erase_identifier_info: S.identifier_info -> T.identifier_info *)
 let erase_identifier_info i = i.S.kind
 
-let erase_main p =
+let erase_func p =
   let locals =
     S.Symb_Tbl.fold
       (fun id info tbl ->
@@ -16,3 +16,6 @@ let erase_main p =
       T.Symb_Tbl.empty
   in
   { T.locals = locals; T.code = p.S.code }    
+
+let erase_prog p =
+  S.Symb_Tbl.map erase_func p

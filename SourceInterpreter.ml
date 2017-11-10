@@ -3,8 +3,9 @@ open SourceAst
 module State = Map.Make(String)
 type state = int State.t
 
-let rec eval_main p x =
-  eval_block (State.singleton "x" x) p.code
+let rec eval_prog p x =
+  failwith("Later...")
+(*eval_block (State.singleton "x" x) p.code*)
 
 (* [eval_block: state -> block -> state] *)
 and eval_block env = function
@@ -37,10 +38,10 @@ and eval_expression env = function
       | Mult ->   ( * )
       | Div ->    ( / )
       | Sub  ->   ( - )
-      | Eq   -> eval_bool_op (=)
-      | Neq  -> eval_bool_op (<>)
-      | Lt   -> eval_bool_op (<)
-      | Le   -> eval_bool_op (<=)
+      | Eq   -> eval_bool_op  ( =   )
+      | Neq  -> eval_bool_op  ( <>  )
+      | Lt   -> eval_bool_op  ( <   )
+      | Le   -> eval_bool_op  ( <=  )
       | And  -> min
       | Or   -> max
     in

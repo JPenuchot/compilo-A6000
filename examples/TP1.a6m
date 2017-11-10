@@ -4,7 +4,7 @@ main(integer x) (
 
   x := 10;
 
-  for s := 0, s < 100, s := s + 1 (
+  for (s := 0, s < 100, s := s + 1) (
     print(s * 2 + x);
     print(x);
   )

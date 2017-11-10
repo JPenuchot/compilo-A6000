@@ -4,7 +4,7 @@ module S = GotoAst
 module T = IrAst
 
 
-let flatten_main p =
+let flatten_func p =
 
   (* On extrait la table des symboles de notre programme, qui sera étendue
      avec les registres virtuels créés à la volée. *)
@@ -86,3 +86,8 @@ let flatten_main p =
   let flattened_code = flatten_block p.S.code in
   { T.locals = !symb_tbl; T.code = List.map label_instruction flattened_code }
 
+let flatten_prog p =
+  failwith("Later...")
+(* Branchement sur Main *)
+
+(* Reste du code *)

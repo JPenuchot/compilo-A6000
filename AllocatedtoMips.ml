@@ -1,7 +1,7 @@
 open AllocatedAst
 open Mips
 
-let generate_main p =
+let generate_func p =
 
   (* Affecte des emplacements mémoire aux variables locales. *)
   let sp_off   = p.offset in
@@ -115,3 +115,7 @@ let generate_main p =
 
   let asm = generate_block p.code in
   { text = init @@ asm @@ close @@ built_ins; data = nop }
+
+
+and generate_prog p =
+  failwith "T'as cru quoi"

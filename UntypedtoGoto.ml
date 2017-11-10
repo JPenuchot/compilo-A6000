@@ -3,7 +3,7 @@
 module S = UntypedAst
 module T = GotoAst
 
-let destructure_main p =
+let destructure_func p =
 
   (* new_label: unit -> string *)
   (* Un appel [new_label()] crée une nouvelle étiquette qui peut être
@@ -48,3 +48,6 @@ let destructure_main p =
   in
 
   { T.locals = p.S.locals; T.code = destructure_block p.S.code }
+
+let destructure_prog p =
+  S.Symb_Tbl.map destructure_func p

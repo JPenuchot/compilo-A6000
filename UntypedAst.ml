@@ -13,7 +13,7 @@ type literal     = SourceAst.literal
 type binop       = SourceAst.binop
 
 (* Programme principal : une table de symboles et un bloc de code *)
-type main = {
+type function_t = {
   locals: identifier_info Symb_Tbl.t;
   code:   block;
 }

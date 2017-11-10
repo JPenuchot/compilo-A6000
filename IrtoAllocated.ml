@@ -36,15 +36,16 @@ let allocate_main reg_flag p =
       let _ = current_offset := max_offset coloring in
       S.Symb_Tbl.mapi (fun id (info: S.identifier_info) ->
           match info with
-          | FormalX -> T.Stack 0
+          | Formal(n) -> T.Stack n
           | Local   -> let color = NodeMap.find id coloring in
             color_to_alloc color
+          | Return  -> failwith "Not implemented."
         ) p.locals
     else
       (* Tout sur la pile *)
       S.Symb_Tbl.mapi (fun id (info: S.identifier_info) ->
           match info with
-          | FormalX -> T.Stack 0
+          | Formal(n) -> T.Stack n
           | Local   -> (current_offset := !current_offset - 4;
                         T.Stack !current_offset)
         ) p.S.locals
