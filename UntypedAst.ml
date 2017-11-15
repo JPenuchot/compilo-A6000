@@ -11,6 +11,7 @@ type block       = SourceAst.block
 type instruction = SourceAst.instruction
 type literal     = SourceAst.literal
 type binop       = SourceAst.binop
+type call        = SourceAst.call
 
 (* Programme principal : une table de symboles et un bloc de code *)
 type function_t = {

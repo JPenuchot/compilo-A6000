@@ -75,6 +75,9 @@ let generate_func p =
     | Goto(lab)       -> b lab
     | CondGoto(v,lab) -> load_value ~$t0 v @@ bnez ~$t0 lab
     | Comment(s)      -> comment s
+
+    | FunCall(id, name, vals) -> failwith "Implémente-moi bâtard"
+    | ProcCall(name, vals) -> failwith "Implémente-moi bâtard"
   in
 
   let init =

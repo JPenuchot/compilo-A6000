@@ -138,7 +138,7 @@ instruction:
 
 | l=location; AFFECT; e=expression        { Set(l, e) }
 | l=location; b=binop;AFFECT;e=expression { Set(l, Binop(b, Location(l), e)) }
-| c=call                                  { PCall(c) }
+| c=call                                  { Call(c) }
 ;
 
 (* Expression syntax *)

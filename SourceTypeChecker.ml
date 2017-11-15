@@ -41,7 +41,7 @@ let typecheck_func prog f =
     | Print(e) ->
       comparetype TypInteger (type_expression e)
 
-    | PCall(c) ->
+    | Call(c) ->
       typecheck_call c
 
   (* Vérifie le typage d'un appel de fonction *)

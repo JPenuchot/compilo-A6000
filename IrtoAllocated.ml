@@ -39,7 +39,7 @@ let allocate_main reg_flag p =
           | Formal(n) -> T.Stack n
           | Local   -> let color = NodeMap.find id coloring in
             color_to_alloc color
-          | Return  -> failwith "Not implemented."
+          | Return  -> failwith "Not implemented." (* TODO *)
         ) p.locals
     else
       (* Tout sur la pile *)

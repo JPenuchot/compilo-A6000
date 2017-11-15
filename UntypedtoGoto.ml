@@ -3,7 +3,7 @@
 module S = UntypedAst
 module T = GotoAst
 
-let destructure_func p =
+let destructure_func f =
 
   (* new_label: unit -> string *)
   (* Un appel [new_label()] crée une nouvelle étiquette qui peut être
@@ -22,6 +22,7 @@ let destructure_func p =
   and destructure_instruction : S.instruction -> T.block = function
     | Print(e)  -> [ T.Print(e)  ]
     | Set(l, e) -> [ T.Set(l, e) ]
+    | Call(c)   -> [ T.Call(c)   ]
 
     | While(e, b) ->
 
@@ -45,9 +46,10 @@ let destructure_func p =
           T.Label(b1_label)]
       @ (destructure_block b1)
       @ [ T.Label(end_label) ]
+
   in
 
-  { T.locals = p.S.locals; T.code = destructure_block p.S.code }
+  { T.locals = f.S.locals; T.code = destructure_block f.S.code }
 
 let destructure_prog p =
   S.Symb_Tbl.map destructure_func p

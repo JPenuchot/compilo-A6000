@@ -32,7 +32,7 @@ and instruction =
   | Set   of location   * expression    (* Affectation *)
   | While of expression * block         (* Boucle      *)
   | If    of expression * block * block (* Branchement *)
-  | PCall of call
+  | Call  of call
   | Print of expression                 (* Affichage   *)
 
 and expression =
@@ -114,7 +114,7 @@ and print_instruction o = function
       (print_block (o+1) b1) (offset o)
       (print_block (o+1) b2) (offset o)
   | Print(e) -> sprintf "print(%s)" (print_expression e)
-  | PCall(c) -> print_call c
+  | Call(c) -> print_call c
 
 let print_main m =
   sprintf "main(int x) (\n%s%s)\n"
