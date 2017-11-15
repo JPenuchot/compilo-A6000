@@ -52,6 +52,17 @@ and print_instruction = function
   | Goto(lab)        -> sprintf "goto %s" lab
   | CondGoto(v, lab) -> sprintf "goto %s when %s" lab (print_value v)
   | Comment(c)       -> sprintf "# %s" c
+  | FunCall  (id, n , vl) -> sprintf "func call %s %s %s"  
+                               id n 
+                               (List.fold_left
+                                  (fun acc elmt ->
+                                     acc ^ " " ^ (print_value elmt)) "" vl)
+  | ProcCall (   n , vl) -> sprintf "proc call %s %s"
+                              n 
+                              (List.fold_left
+                                 (fun acc elmt ->
+                                    acc ^ " " ^ (print_value elmt)) "" vl)
+
 
 and print_value = function
   | Literal(lit)   -> SourceAst.print_literal lit
