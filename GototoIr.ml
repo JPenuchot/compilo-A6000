@@ -4,11 +4,11 @@ module S = GotoAst
 module T = IrAst
 
 
-let flatten_func p =
+let flatten_func p f =
 
   (* On extrait la table des symboles de notre programme, qui sera étendue
      avec les registres virtuels créés à la volée. *)
-  let symb_tbl = ref p.S.locals in
+  let symb_tbl = ref f.S.locals in
 
   (* Ajout à la table des symboles d'un nouveau registre virtuel *)
   let add_symb s =
@@ -46,6 +46,9 @@ let flatten_func p =
       let ce, ve = flatten_expression e in
       ce @ [ T.CondGoto(ve, l)]
     | S.Comment(s)  -> [ T.Comment(s) ]
+    | S.Call(c)  -> let ce, ve = flatten_expression (Call(c)) in
+      ce (*@ [ ProcCall ]*)
+
 
   (* flatten_expression: S.expression -> T.instruction list -> T.value *)
   (* Appliquée à une expression, [flatten_expression] renvoie une liste
@@ -66,6 +69,16 @@ let flatten_func p =
       and (l1, v1) = (flatten_expression e1)
       and (l2, v2) = (flatten_expression e2) in
       (l1 @ l2 @ [ Binop(id, b, v1, v2) ], T.Identifier(id))
+    | Call(name, arglist) ->
+      (* Appel de la fonction *)
+      let id = new_tmp () in
+      let insl, idl = List.fold_left (fun acc elmt ->
+          let (ins, id) = flatten_expression elmt in
+          let (inslist, idlist) = acc in
+          ((inslist @ ins), (id :: idlist))
+        ) ([],[]) arglist in
+
+      (insl @ [ T.FunCall(id, name, (List.rev idl)) ], T.Identifier(id))
   in
 
   (* label_instruction: T.instruction -> T.label * T.instruction *)
@@ -83,7 +96,7 @@ let flatten_func p =
       | _         -> lab, i
   in
 
-  let flattened_code = flatten_block p.S.code in
+  let flattened_code = flatten_block f.S.code in
   { T.locals = !symb_tbl; T.code = List.map label_instruction flattened_code }
 
 let flatten_prog p =
