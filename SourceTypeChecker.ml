@@ -41,7 +41,7 @@ let typecheck_func prog f =
     | Print(e) ->
       comparetype TypInteger (type_expression e)
 
-    | Call(c) ->
+    | CallIns(c) ->
       typecheck_call c
 
   (* Vérifie le typage d'un appel de fonction *)
@@ -74,7 +74,7 @@ let typecheck_func prog f =
       comparetype ty_op (type_expression e2);
       ty_r
 
-    | Call(name, exps) ->
+    | CallExp(name, exps) ->
       let t = match (Symb_Tbl.find name prog).return with
         | Some(t) -> t
         | _ -> raise Untyped_expression_error
