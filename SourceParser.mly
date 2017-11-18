@@ -44,52 +44,64 @@
 (* Program structure *)
 
 prog:
-| pg=fun_decls; EOF                       { pg }
+| EOF                                     { Symb_Tbl.empty }
+| fd = fun_decl; p = prog;
+  {
+    let (fd, id) = fd in
+      Symb_Tbl.add id fd p
+  }
 
 (* Function declaration syntax *)
 
-fun_decls:
-| (* empty *)                             { Symb_Tbl.empty }
-
+fun_decl:
 (* Function *)
 | t=typename; id=IDENT;
   BEGIN; p=parameters; END;
   BEGIN; vds=var_decls; is=instructions; END;
-  fds = fun_decls;
   {
     let (form, pl, _) = p in
-    Symb_Tbl.add id
-    { return = None;
-      locals = Symb_Tbl.union
-      (fun _ _ v -> Some v)
-       vds
-       (Symb_Tbl.add "return" {typ = t; kind = Return} form);
-      formals = pl;
-      code = is }
-    fds
+    (
+      { return = None;
+        locals = Symb_Tbl.union
+        (fun _ _ v -> Some v)
+        vds
+        (Symb_Tbl.add "return" {typ = t; kind = Return} form);
+        formals = pl;
+        code = is
+      },
+      id
+    )
   }
 
 (* Procedure *)
 | id=IDENT;
   BEGIN; p=parameters; END;
   BEGIN; vds=var_decls; is=instructions; END;
-  fds = fun_decls;
   {
-    let (form, pl, _) = p in
-    Symb_Tbl.add id
-    { return = None;
-      locals = Symb_Tbl.union
-      (fun _ _ v -> Some v)
-       vds form;
-      formals = pl;
-      code = is }
-    fds
+    (
+      let (form, pl, _) = p in
+      { 
+        return = None;
+        locals = Symb_Tbl.union
+        (fun _ _ v -> Some v)
+         vds form;
+        formals = pl;
+        code = is
+      },
+      id
+    )
   }
 ;
 
-
 parameters:
-| (* empty *)                             { (Symb_Tbl.empty, [], 1) }
+| (* Empty *)                             { (Symb_Tbl.empty, [], 0) }
+| p=params                                { p }
+
+params:
+| tp=typename; id=IDENT
+  {
+    (Symb_Tbl.singleton id { typ = tp; kind = Formal(1)}, [ tp ], 2)
+  }
 | p=parameters; COMMA;tp=typename; id=IDENT;
   { 
     let (st, pl, num) = p in
@@ -113,7 +125,8 @@ instructions:
 | (* empty *)                             { [] }
 | i=instruction; SEMI; is=instructions    { i :: is }
 
-| FOR; (* for ins, comp, incr ( blk ) *)
+(* for ins, comp, incr ( blk ) *)
+| FOR;
   BEGIN; i_st=instruction;
     COMMA; e=expression;
     COMMA; i_it=instruction;
@@ -138,7 +151,7 @@ instruction:
 
 | l=location; AFFECT; e=expression        { Set(l, e) }
 | l=location; b=binop;AFFECT;e=expression { Set(l, Binop(b, Location(l), e)) }
-| c=call                                  { Call(c) }
+| c=call                                  { CallIns(c) }
 ;
 
 (* Expression syntax *)
@@ -148,7 +161,7 @@ expression:
 | b=BOOLVAL;                              { Literal(Bool(b)) }
 | loc=location                            { Location(loc) }
 | e1=expression; b=binop; e2=expression   { Binop(b, e1, e2) }
-| c=call                                  { Call(c) }
+| c=call                                  { CallExp(c) }
 ;
 
 (* Function calls *)
