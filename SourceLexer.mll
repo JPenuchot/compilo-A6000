@@ -15,12 +15,12 @@
           "then",     THEN;
           "else",     ELSE;
           "var",      VAR;
-          "integer",  INT;
           "boolean",  BOOL;
           "true",     BOOLVAL(true);
           "false",    BOOLVAL(false);
       ] ;
     fun s ->
+    Printf.printf "Current token : %s\n" s;
       try  Hashtbl.find h s
       with Not_found -> IDENT(s)
 }
@@ -32,7 +32,7 @@ let integer = (digit)*
 
 rule token = parse
   | ['\n']
-      { token lexbuf }
+      { print_string "New line\n";token lexbuf }
   | [' ' '\t' '\r']+
       { token lexbuf }
   (*| "true" | "false"*)
