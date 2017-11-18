@@ -29,17 +29,17 @@ and identifier_info = { typ: typ; kind: identifier_kind }
 (* Un bloc de code est une liste d'instructions *)
 and block = instruction list
 and instruction =
-  | Set   of location   * expression    (* Affectation *)
-  | While of expression * block         (* Boucle      *)
-  | If    of expression * block * block (* Branchement *)
-  | Call  of call
-  | Print of expression                 (* Affichage   *)
+  | Set      of location   * expression    (* Affectation *)
+  | While    of expression * block         (* Boucle      *)
+  | If       of expression * block * block (* Branchement *)
+  | CallIns  of call
+  | Print    of expression                 (* Affichage   *)
 
 and expression =
   | Literal   of literal                          (* Valeur immédiate   *)
   | Location  of location                         (* Valeur en mémoire  *)
   | Binop     of binop * expression * expression  (* Opération binaire  *)
-  | Call      of call                             (* Appel de fonction  *)
+  | CallExp   of call                             (* Appel de fonction  *)
 
 and literal =
   | Int  of int  (* Constante entière   *)
@@ -91,7 +91,7 @@ let rec print_expression = function
   | Binop(op, e1, e2) ->
     sprintf "( %s %s %s )"
       (print_expression e1) (print_binop op) (print_expression e2)
-  | Call(c) ->
+  | CallExp(c) ->
     print_call c
 and print_call (name, elist) =
   sprintf "%s ( " name ^
@@ -114,7 +114,7 @@ and print_instruction o = function
       (print_block (o+1) b1) (offset o)
       (print_block (o+1) b2) (offset o)
   | Print(e) -> sprintf "print(%s)" (print_expression e)
-  | Call(c) -> print_call c
+  | CallIns(c) -> print_call c
 
 let print_main m =
   sprintf "main(int x) (\n%s%s)\n"

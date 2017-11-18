@@ -20,7 +20,7 @@ and instruction =
   | Goto      of label                 (* Saut              *)
   | CondGoto  of expression * label    (* Saut conditionnel *)
   | Comment   of string                (* Commentaire       *)
-  | Call      of call                  (* Appel de fonction *)
+  | CallGTA   of call                  (* Appel de fonction *)
 
 type function_t = {
   locals: identifier_info Symb_Tbl.t;
