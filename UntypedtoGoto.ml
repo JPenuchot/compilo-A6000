@@ -22,7 +22,7 @@ let destructure_func f =
   and destructure_instruction : S.instruction -> T.block = function
     | Print(e)  -> [ T.Print(e)  ]
     | Set(l, e) -> [ T.Set(l, e) ]
-    | Call(c)   -> [ T.Call(c)   ]
+    | CallIns(c)   -> [ T.CallGTA(c)   ]
 
     | While(e, b) ->
 

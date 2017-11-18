@@ -48,6 +48,7 @@ let allocate_main reg_flag p =
           | Formal(n) -> T.Stack n
           | Local   -> (current_offset := !current_offset - 4;
                         T.Stack !current_offset)
+          | Return -> failwith"Not implemented."
         ) p.S.locals
   in
 

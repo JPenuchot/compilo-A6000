@@ -4,7 +4,7 @@ module S = GotoAst
 module T = IrAst
 
 
-let flatten_func p f =
+let flatten_func p f name =
 
   (* On extrait la table des symboles de notre programme, qui sera étendue
      avec les registres virtuels créés à la volée. *)
@@ -46,8 +46,7 @@ let flatten_func p f =
       let ce, ve = flatten_expression e in
       ce @ [ T.CondGoto(ve, l)]
     | S.Comment(s)  -> [ T.Comment(s) ]
-    | S.Call(c)  -> let ce, ve = flatten_expression (Call(c)) in
-      ce (*@ [ ProcCall ]*)
+    | S.CallGTA(c)  -> let ce, _ = flatten_expression (CallExp(c)) in ce
 
 
   (* flatten_expression: S.expression -> T.instruction list -> T.value *)
@@ -69,13 +68,13 @@ let flatten_func p f =
       and (l1, v1) = (flatten_expression e1)
       and (l2, v2) = (flatten_expression e2) in
       (l1 @ l2 @ [ Binop(id, b, v1, v2) ], T.Identifier(id))
-    | Call(name, arglist) ->
+    | CallExp(name, arglist) ->
       (* Appel de la fonction *)
       let id = new_tmp () in
       let insl, idl = List.fold_left (fun acc elmt ->
-          let (ins, id) = flatten_expression elmt in
-          let (inslist, idlist) = acc in
-          ((inslist @ ins), (id :: idlist))
+          let ins, id = flatten_expression elmt
+          and inslist, idlist = acc in
+          (inslist @ ins), (id :: idlist)
         ) ([],[]) arglist in
 
       (insl @ [ T.FunCall(id, name, (List.rev idl)) ], T.Identifier(id))
@@ -85,9 +84,9 @@ let flatten_func p f =
   (* Un appel [label_instruction i] crée une nouvelle étiquette pour
      identifier l'instruction [i], si celle-ci n'est pas déjà une étiquette
      de saut. *)
-  let label_instruction =
+  let label_instruction name =
     let cpt = ref 0 in
-    fun i -> let lab = Printf.sprintf "_main_%d" !cpt in
+    fun i -> let lab = Printf.sprintf "_%s_%d" name !cpt in
       incr cpt;
       match i with
       (* On force une correspondance entre étiquette de saut
@@ -97,10 +96,13 @@ let flatten_func p f =
   in
 
   let flattened_code = flatten_block f.S.code in
-  { T.locals = !symb_tbl; T.code = List.map label_instruction flattened_code }
+  {
+    T.locals = !symb_tbl;
+    T.code = List.map (label_instruction name) flattened_code
+  }
 
 let flatten_prog p =
-  failwith("Later...")
-(* Branchement sur Main *)
-
-(* Reste du code *)
+  (* Vérification de l'existence d'un main
+     avec un paramètre formel de type int *)
+  let main = S.Symb_Tbl.find "main" p in
+  flatten_func p main "main"

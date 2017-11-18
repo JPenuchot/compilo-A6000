@@ -1,6 +1,10 @@
 open AllocatedAst
 open Mips
 
+(* Génère un nom de label pour un saut
+ * (pour éviter de confondre avec les sauts dans les fonctions) *)
+let fun_id_to_label name = "func_" ^ name
+
 let generate_func p =
 
   (* Affecte des emplacements mémoire aux variables locales. *)
@@ -121,4 +125,5 @@ let generate_func p =
 
 
 and generate_prog p =
+  (* Déroule le main, appelle les fonctions *)
   failwith "T'as cru quoi"
