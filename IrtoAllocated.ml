@@ -24,7 +24,7 @@ let max_offset coloring =
   | T.Stack o -> o
 
 (** Allocation *)
-let allocate_main reg_flag p =
+let allocate_func reg_flag p =
   let current_offset = ref 0 in
 
   let tbl =
@@ -39,7 +39,7 @@ let allocate_main reg_flag p =
           | Formal(n) -> T.Stack n
           | Local   -> let color = NodeMap.find id coloring in
             color_to_alloc color
-          | Return  -> failwith "Not implemented." (* TODO *)
+          | Return  -> T.Ret
         ) p.locals
     else
       (* Tout sur la pile *)
@@ -48,8 +48,10 @@ let allocate_main reg_flag p =
           | Formal(n) -> T.Stack n
           | Local   -> (current_offset := !current_offset - 4;
                         T.Stack !current_offset)
-          | Return -> failwith"Not implemented."
+          | Return -> T.Ret
         ) p.S.locals
   in
 
   { T.locals = tbl; T.offset = !current_offset; T.code = p.S.code }
+
+let allocate_prog reg_flag p = S.Symb_Tbl.map (allocate_func reg_flag) p

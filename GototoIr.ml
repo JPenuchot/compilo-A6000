@@ -4,7 +4,7 @@ module S = GotoAst
 module T = IrAst
 
 
-let flatten_func p f name =
+let flatten_func p name f =
 
   (* On extrait la table des symboles de notre programme, qui sera étendue
      avec les registres virtuels créés à la volée. *)
@@ -101,8 +101,4 @@ let flatten_func p f name =
     T.code = List.map (label_instruction name) flattened_code
   }
 
-let flatten_prog p =
-  (* Vérification de l'existence d'un main
-     avec un paramètre formel de type int *)
-  let main = S.Symb_Tbl.find "main" p in
-  flatten_func p main "main"
+let flatten_prog p = S.Symb_Tbl.mapi (flatten_func p) p

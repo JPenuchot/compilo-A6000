@@ -5,11 +5,12 @@ open Mips
  * (pour éviter de confondre avec les sauts dans les fonctions) *)
 let fun_id_to_label name = "func_" ^ name
 
-let generate_func p =
 
+
+let generate_func p f fname =
   (* Affecte des emplacements mémoire aux variables locales. *)
-  let sp_off   = p.offset in
-  let symb_tbl = p.locals in
+  let sp_off   = f.offset in
+  let symb_tbl = f.locals in
   let find_alloc id =
     try  AllocatedAst.Symb_Tbl.find id symb_tbl
     with Not_found -> failwith (Printf.sprintf "Node %s not found" id)
@@ -80,20 +81,57 @@ let generate_func p =
     | CondGoto(v,lab) -> load_value ~$t0 v @@ bnez ~$t0 lab
     | Comment(s)      -> comment s
 
-    | FunCall(id, name, vals) -> failwith "Implémente-moi bâtard"
-    | ProcCall(name, vals) -> failwith "Implémente-moi bâtard"
+    (* TODO *)
+    | FunCall(id, name, vals) -> failwith "Appels de fonctions non implémentés."
+    | ProcCall(name, vals) -> failwith "Appels de procédures non implémentés."
   in
 
-  let init =
-    move fp sp
-    @@ addi fp fp (-4)
-    @@ lw a0 0 a1
-    @@ jal "atoi"
-    @@ sw v0 0 fp
-    @@ addi sp sp sp_off
-  in
+  (* Génération d'une fonction *)
+  if fname <> "main" then
+    (* Retourne la taille de la pile de f + 4 *)
+    let sp_shift =
+      (* Nb var locales + 4 *)
+      Symb_Tbl.cardinal f.locals + 4
+    in
 
-  let close = li v0 10 @@ syscall in
+    (* Sauvegarde de $ra et $old_fp *)
+    let init =
+      (* Mettre $ra à l'adresse pointée par $sp
+       * Mettre $fp à l'adresse pointée par $sp - 4
+       * $fp <- $sp
+      *)
+      label (fun_id_to_label fname)
+      @@ sw ra 0 sp
+      @@ sw fp 4 sp
+      @@ addi fp sp 0
+      @@ addi sp sp sp_shift
+
+    and close =
+      lw ra 0 fp
+      (* Passage du paramètre (à l'adresse pointée par $ra), dépilement *)
+    in init @@ (generate_block f.code) @@ close
+
+  else  (* Cas du main *)
+    let init_main =
+      move fp sp
+      @@ addi fp fp (-4)
+      @@ lw a0 0 a1
+      @@ jal "atoi"
+      @@ sw v0 0 fp
+      @@ addi sp sp sp_off
+
+    and close_main = li v0 10 @@ syscall in
+
+    (* TODO : More checks on the main function (Formal parameter, result val) *)
+    init_main
+    @@ (generate_block (Symb_Tbl.find "main" p).code)
+    @@ close_main
+
+let generate_prog p =
+  let main = generate_func p (Symb_Tbl.find "main" p) "main"
+  (*and functions = []*)
+  in
+  (*and functions = generate_block f.code*)
 
   let built_ins =
     label "atoi"
@@ -119,11 +157,4 @@ let generate_func p =
     @@ move v0 t1
     @@ jr   ra
   in
-
-  let asm = generate_block p.code in
-  { text = init @@ asm @@ close @@ built_ins; data = nop }
-
-
-and generate_prog p =
-  (* Déroule le main, appelle les fonctions *)
-  failwith "T'as cru quoi"
+  { text = main (*@@ functions*) @@ built_ins; data = nop }

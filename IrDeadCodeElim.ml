@@ -35,9 +35,11 @@ let dce_step p =
 
 
 (* Élimination itérée *)
-let rec dce p =
+let rec dce_func p =
   let ismodified, np = dce_step p in
   if ismodified then
-    dce np
+    dce_func np
   else
     np
+
+let dce p = Symb_Tbl.map dce_func p

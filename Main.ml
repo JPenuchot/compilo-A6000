@@ -42,12 +42,12 @@ let () =
     (* Dead code elimination *)
     let p =
       if   !dead_code_elim
-      then IrDeadCodeElim.dce p
+      then IrDeadCodeElim.dce p (* TODO *)
       else p
     in
 
-    let p = IrtoAllocated.allocate_main !reg_allocation p in
-    let asm = AllocatedtoMips.generate_prog p in
+    let p = IrtoAllocated.allocate_prog !reg_allocation p in
+    let asm = AllocatedtoMips.generate_prog p in (* TODO *)
     let output_file = (Filename.chop_suffix file ".a6m") ^ ".asm" in
     let out = open_out output_file in
     let outf = formatter_of_out_channel out in

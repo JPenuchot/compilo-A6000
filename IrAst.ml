@@ -10,7 +10,9 @@ type literal         = GotoAst.literal
 type identifier_info = GotoAst.identifier_info
 type binop           = GotoAst.binop
 
-type main = {
+type main = function_info Symb_Tbl.t
+
+and function_info = {
   locals: identifier_info Symb_Tbl.t;
   code:   block;
 }
