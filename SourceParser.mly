@@ -65,7 +65,7 @@ fun_decl:
         locals = Symb_Tbl.union
         (fun _ _ v -> Some v)
         vds
-        (Symb_Tbl.add "return" {typ = t; kind = Return} form);
+        (Symb_Tbl.add "result" {typ = t; kind = Return} form);
         formals = pl;
         code = is
       },
@@ -102,7 +102,7 @@ params:
   {
     (Symb_Tbl.singleton id { typ = tp; kind = Formal(1)}, [ tp ], 2)
   }
-| p=parameters; COMMA;tp=typename; id=IDENT;
+| p=params; COMMA;tp=typename; id=IDENT;
   { 
     let (st, pl, num) = p in
     (Symb_Tbl.add id { typ = tp; kind = Formal(num)} st, tp :: pl, num + 1)
@@ -157,11 +157,11 @@ instruction:
 (* Expression syntax *)
 
 expression:
+| c=call                                  { CallExp(c) }
 | i=INTVAL;                               { Literal(Int(i)) }
 | b=BOOLVAL;                              { Literal(Bool(b)) }
 | loc=location                            { Location(loc) }
 | e1=expression; b=binop; e2=expression   { Binop(b, e1, e2) }
-| c=call                                  { CallExp(c) }
 ;
 
 (* Function calls *)
@@ -172,7 +172,12 @@ call:
 
 arguments:
 | (* empty *)                             { [] }
-| elist=arguments; COMMA; e=expression    { e :: elist }
+| a=args                                  { List.rev a }
+;
+
+args:
+| e=expression { [ e ] }
+| elist=args; COMMA; e=expression { e :: elist }
 ;
 
 (* Types *)

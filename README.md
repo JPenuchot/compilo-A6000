@@ -34,10 +34,4 @@ main(integer x) (
 
 ## A propos du compilateur
 
-|Feature|Description|Implémentation|
-|-|-|-|
-|Elimination du code mort|Elimination des portions de code qui n'introduisent aucune modification de variable|Fait|
-|For|Boucle for (voir examples/for.a6m)|Fait|
-|Allocation des registres|Allocation intelligente des registres pour les traitements|Partielle|
-|Debug|Indication de la ligne où une erreur de syntaxe a été rencontrée|Planifié|
-|Fusion d'opération|Permet de rajouter un binop devant `:=` pour effectuer l'opération avec soi-même et une expression donnée|Fait|
+Les appels de fonctions et de procédures sont implémentés, il ne reste que des raccords (concaténation) à la fin d'AllocatedToMips.ml. Le moteur de typage est cassé.

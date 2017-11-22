@@ -28,14 +28,18 @@ let file =
   match !file with Some f -> f | None -> Arg.usage spec usage; exit 1
 
 let () =
+  print_string "Let's begin !\n";
   let c  = open_in file in
   let lb = Lexing.from_channel c in
-  let p  = SourceParser.prog SourceLexer.token lb
-  in close_in c; SourceTypeChecker.typecheck_prog p;
+  let p  = SourceParser.prog SourceLexer.token lb in
+  close_in c;
+  print_string "Parsing, done.\n";
+  (*SourceTypeChecker.typecheck_prog p;*)
+  print_string "Type checking, done.\n"; 
   if !interpret
   then let _ = SourceInterpreter.eval_prog p !input in ()
   else begin
-    let p = SourcetoUntyped.erase_prog p in
+    let p = print_string "SourceToUntyped...\n";SourcetoUntyped.erase_prog p in
     let p = UntypedtoGoto.destructure_prog p in
     let p = GototoIr.flatten_prog p in
 

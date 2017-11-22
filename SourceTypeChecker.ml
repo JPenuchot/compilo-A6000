@@ -75,9 +75,14 @@ let typecheck_func prog f =
       ty_r
 
     | CallExp(name, exps) ->
-      let t = match (Symb_Tbl.find name prog).return with
-        | Some(t) -> t
-        | _ -> raise Untyped_expression_error
+      let t = 
+        try
+          match (Symb_Tbl.find name prog).return with
+          | Some(t) -> t
+          | _ -> raise Untyped_expression_error
+        with
+        | _ -> failwith ("Unknown identifier : " ^ name)
+
 
       (* Vérifier le typage des expressions *)
       in List.iter (fun e -> let _ = (type_expression e) in ()) exps;
@@ -91,7 +96,10 @@ let typecheck_func prog f =
 
   (* type_location: location -> typ *)
   and type_location = function
-    | Identifier(id) -> (Symb_Tbl.find id symb_tbl).typ
+    | Identifier(id) -> try
+        (Symb_Tbl.find id symb_tbl).typ
+      with
+      | _ -> failwith ("Undefined identifier: " ^ id ^ "")
 
   (* [type_binop] renvoie le type des opérandes et le type du résultat
      d'un opérateur binaire. *)

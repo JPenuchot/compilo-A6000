@@ -3,7 +3,7 @@ open Mips
 
 (* Génère un nom de label pour un saut
  * (pour éviter de confondre avec les sauts dans les fonctions) *)
-let fun_id_to_label name = "func_" ^ name
+let fun_id_to_jal_label name = "func_" ^ name
 
 (* Génération des fonctions *)
 let generate_func p f fname =
@@ -81,10 +81,77 @@ let generate_func p f fname =
     | Comment(s)      -> comment s
 
     (* TODO *)
-    | FunCall(id, name, vals) ->
+    | FunCall(dest, name, vals) ->
+      (* Appel de fonction *)
+      let f = Symb_Tbl.find name p in
+      let has_res = match Symb_Tbl.find_opt "result" p with
+        | None -> false | _ -> true in
+      (* Allocation de l'emplacement de la valeur de retour *)
+      let res_alloc = (if has_res then addi sp sp 4 else nop) in
+
+      let param_offset = (if has_res then 4 else 0)
+      and num_formals = List.fold_left (fun acc _ -> acc + 1) 0 vals in
+
+      (* Allocation des emplacements des paramètres *)
+      let param_alloc = addi sp sp (4 * num_formals) in
+
+      (* Affectation des valeurs des paramètres *)
+      let affect_vals, _ = List.fold_left (
+          fun (inst, cnt) value ->
+            (inst
+             (* On charge la valeur *)
+             @@ (load_value ~$t0 value)
+             (* On la place où il faut *)
+             @@ sw t0 cnt fp,
+             cnt + 4)
+        ) ((nop), param_offset + 4) vals in
+
+      (* Compilation de la phase pré-appel *)
+      let before = res_alloc @@ param_alloc @@ affect_vals in
+
+      (* Dépilement des paramètres formels de la fonction appelée *)
+      let unstack_param = addi sp sp (4 * num_formals) in
+      let aff_param =
+        match find_alloc dest with
+        | Reg r   -> lw r 0 sp
+        | Stack o -> lw t0 0 sp @@ sw t0 o fp
+      in
+      let restore = addi sp sp (param_offset + (4 * num_formals)) in
+
+      before @@ jal (fun_id_to_jal_label name) @@ aff_param @@ restore
 
     | ProcCall(name, vals) ->
-      failwith "Appels de procédures non implémentés"
+      (* Appel de procédure (sans prendre en compte le retour éventuel) *)
+      let f = Symb_Tbl.find name p in
+      let has_res = match Symb_Tbl.find_opt "result" p with
+        | None -> false | _ -> true in
+      (* Allocation de l'emplacement de la valeur de retour *)
+      let res_alloc = (if has_res then addi sp sp 4 else nop) in
+
+      let param_offset = (if has_res then 4 else 0)
+      and num_formals = List.fold_left (fun acc _ -> acc + 1) 0 vals in
+
+      (* Allocation des emplacements des paramètres *)
+      let param_alloc = addi sp sp (4 * num_formals) in
+
+      (* Affectation des valeurs des paramètres *)
+      let affect_vals, _ = List.fold_left (
+          fun (inst, cnt) value ->
+            (inst
+             (* On charge la valeur *)
+             @@ (load_value ~$t0 value)
+             (* On la place où il faut *)
+             @@ sw t0 cnt fp,
+             cnt + 4)
+        ) ((nop), param_offset + 4) vals in
+
+      (* Compilation de la phase pré-appel *)
+      let before = res_alloc @@ param_alloc @@ affect_vals in
+
+      (* Dépilement des paramètres formels de la fonction appelée *)
+      let restore = addi sp sp (param_offset + (4 * num_formals)) in
+
+      before @@ jal (fun_id_to_jal_label name) @@ restore
   in
 
   (* Génération d'une fonction *)
@@ -97,11 +164,7 @@ let generate_func p f fname =
 
     (* Sauvegarde de $ra et $old_fp *)
     let init =
-      (* $sp pointe au sommet de la pile *)
-      (* Mettre $ra à l'adresse pointée par $sp *)
-      (* Mettre $fp à l'adresse pointée par $sp - 4 *)
-
-      label (fun_id_to_label fname)
+      label (fun_id_to_jal_label fname)
       @@ addi sp sp (-8) (* $sp pointe au sommet de la pile de l'appelant,
                           * on l'incrémente de 2 cases (8 octets) pour stocker
                           * $ra et old_$fp. *)
@@ -142,9 +205,13 @@ let generate_func p f fname =
     @@ close_main
 
 let generate_prog p =
-  let main = generate_func p (Symb_Tbl.find "main" p) "main"
-  (*and functions = []*)
-  in
+  let main = generate_func p (Symb_Tbl.find "main" p) "main" in
+  (*let new_p = Symb_Tbl.remove "main" p in*)
+  (*let functions =*)
+  (*  Symb_Tbl.fold (fun key e acc ->*)
+  (*      acc @@ (generate_func new_p e key)*)
+  (*    ) main*)
+  (*in*)
   (*and functions = generate_block f.code*)
 
   let built_ins =
