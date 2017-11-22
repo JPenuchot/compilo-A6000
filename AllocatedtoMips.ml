@@ -5,8 +5,7 @@ open Mips
  * (pour éviter de confondre avec les sauts dans les fonctions) *)
 let fun_id_to_label name = "func_" ^ name
 
-
-
+(* Génération des fonctions *)
 let generate_func p f fname =
   (* Affecte des emplacements mémoire aux variables locales. *)
   let sp_off   = f.offset in
@@ -59,7 +58,7 @@ let generate_func p f fname =
         | Add  -> add
         | Sub  -> sub
         | Mult -> mul
-        | Div -> div
+        | Div  -> div
         | Eq   -> seq
         | Neq  -> sne
         | Lt   -> slt
@@ -82,8 +81,10 @@ let generate_func p f fname =
     | Comment(s)      -> comment s
 
     (* TODO *)
-    | FunCall(id, name, vals) -> failwith "Appels de fonctions non implémentés."
-    | ProcCall(name, vals) -> failwith "Appels de procédures non implémentés."
+    | FunCall(id, name, vals) ->
+
+    | ProcCall(name, vals) ->
+      failwith "Appels de procédures non implémentés"
   in
 
   (* Génération d'une fonction *)
@@ -96,19 +97,31 @@ let generate_func p f fname =
 
     (* Sauvegarde de $ra et $old_fp *)
     let init =
-      (* Mettre $ra à l'adresse pointée par $sp
-       * Mettre $fp à l'adresse pointée par $sp - 4
-       * $fp <- $sp
-      *)
-      label (fun_id_to_label fname)
-      @@ sw ra 0 sp
-      @@ sw fp 4 sp
-      @@ addi fp sp 0
-      @@ addi sp sp sp_shift
+      (* $sp pointe au sommet de la pile *)
+      (* Mettre $ra à l'adresse pointée par $sp *)
+      (* Mettre $fp à l'adresse pointée par $sp - 4 *)
 
+      label (fun_id_to_label fname)
+      @@ addi sp sp (-8) (* $sp pointe au sommet de la pile de l'appelant,
+                          * on l'incrémente de 2 cases (8 octets) pour stocker
+                          * $ra et old_$fp. *)
+
+      @@ sw ra 0 sp     (* $sp pointe où fp devra pointer, CàD à l'emplacement
+                         * de sauvegarde de $ra. *)
+
+      @@ sw fp 4 sp     (* Une case (4 octets) au-dessus on stocke old_$fp. *)
+      @@ addi fp sp 0   (* $fp <- $sp *)
+      @@ addi sp fp sp_shift (* On alloue enfin la place nécessaire pour les
+                              * variables locales de la fonction. *)
+
+
+    (* Dépilement, restauration des registres *)
     and close =
-      lw ra 0 fp
-      (* Passage du paramètre (à l'adresse pointée par $ra), dépilement *)
+      addi sp fp 0        (* On dépile tout. *)
+      @@ lw ra 0 sp       (* On restaure $ra *)
+      @@ lw fp 4 sp       (* On restaure $fp avec old_$fp *)
+      @@ addi sp sp (-8)  (* On désalloue $ra et old_$fp de la pile *)
+      @@ jal ra           (* On retourne à l'appelant *)
     in init @@ (generate_block f.code) @@ close
 
   else  (* Cas du main *)
@@ -122,7 +135,8 @@ let generate_func p f fname =
 
     and close_main = li v0 10 @@ syscall in
 
-    (* TODO : More checks on the main function (Formal parameter, result val) *)
+    (* TODO : Un peu plus de checks sur les paramètres formels du main... *)
+
     init_main
     @@ (generate_block (Symb_Tbl.find "main" p).code)
     @@ close_main

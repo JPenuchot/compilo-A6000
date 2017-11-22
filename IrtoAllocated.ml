@@ -27,6 +27,16 @@ let max_offset coloring =
 let allocate_func reg_flag p =
   let current_offset = ref 0 in
 
+  (* On compte les paramètres formels pour attribuer
+   * les emplacements dans la pile *)
+  let num_formals = 
+    S.Symb_Tbl.fold (fun _ (elmt: S.identifier_info) acc ->
+        match elmt with
+        | Formal(_) -> acc + 1
+        | _ -> acc
+      ) p.S.locals 0
+  in
+
   let tbl =
     if reg_flag
     then
@@ -36,19 +46,19 @@ let allocate_func reg_flag p =
       let _ = current_offset := max_offset coloring in
       S.Symb_Tbl.mapi (fun id (info: S.identifier_info) ->
           match info with
-          | Formal(n) -> T.Stack n
+          | Formal(n) -> T.Stack (num_formals + 8 - n)
+          | Return  -> T.Stack (num_formals + 8)
           | Local   -> let color = NodeMap.find id coloring in
             color_to_alloc color
-          | Return  -> T.Ret
         ) p.locals
     else
       (* Tout sur la pile *)
       S.Symb_Tbl.mapi (fun id (info: S.identifier_info) ->
           match info with
-          | Formal(n) -> T.Stack n
+          | Formal(n) -> T.Stack (num_formals + 8 - n)
+          | Return  -> T.Stack (num_formals + 8)
           | Local   -> (current_offset := !current_offset - 4;
                         T.Stack !current_offset)
-          | Return -> T.Ret
         ) p.S.locals
   in
 

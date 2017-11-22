@@ -12,7 +12,6 @@ type value       = IrAst.value
 type alloc_info =
   | Reg   of string
   | Stack of int
-  | Ret
 
 type main = {
   locals: alloc_info Symb_Tbl.t;
