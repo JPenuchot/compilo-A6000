@@ -16,15 +16,22 @@ open IrLiveness
 (* Fonction auxiliaire : ajoute à un graphe l'ensemble des interférences
    dues à une instruction donnée, connaissant l'ensemble des variables
    vivantes en sortie de cette instruction. *)
-let add_interferences g lv_out_at_node = function
-  | Value(a, Identifier c) ->
-    (* Copie : ne pas introduire de conflit entre [a] et [c]. *)
-    VarSet.fold (fun elmt acc -> Graph.add_edge acc a elmt )
-      (VarSet.diff lv_out_at_node (VarSet.singleton c)) g
-
-  | Value(id, _) | Binop(id, _, _, _) ->
-    VarSet.fold (fun elmt acc -> Graph.add_edge acc id elmt ) lv_out_at_node g
-
+let add_interferences g lv_out_at_node = function  
+  | Value(a, Identifier b) ->
+    (* Copie : ne pas introduire de conflit entre [a] et [b]. *)
+    VarSet.fold (fun c g ->
+      if b = c
+      then g
+      else Graph.add_edge g a c
+    ) lv_out_at_node g
+      
+  | Value(a, _)
+  | Binop(a, _, _, _) ->
+    (* Définition normale. *)
+    VarSet.fold (fun b g ->
+      Graph.add_edge g a b
+    ) lv_out_at_node g
+      
   | _ -> g
 
 (* Fonction principale, qui itère sur l'ensemble des points du programme. *)
@@ -39,6 +46,7 @@ let interference_graph p : Graph.t =
   let _, lv_out = mk_lv p in
 
   (* Enfin, itérer sur l'ensemble des points du programme. *)
-  List.fold_left (fun acc (label, inst) ->
-      add_interferences acc (Hashtbl.find lv_out label) inst
-    ) g p.code
+  List.fold_left (fun g (lab, i) ->
+    let lv_out_at_node = Hashtbl.find lv_out lab in
+    add_interferences g lv_out_at_node i
+  ) g p.code

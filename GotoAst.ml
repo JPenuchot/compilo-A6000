@@ -9,21 +9,22 @@ type identifier_info = UntypedAst.identifier_info
 type literal         = UntypedAst.literal
 type binop           = UntypedAst.binop
 type call            = UntypedAst.call
-
+    
 type label = string
-
+    
 type block = instruction list
 and instruction =
-  | Set       of location * expression (* Affectation       *)
-  | Print     of expression            (* Affichage         *)
-  | Label     of label                 (* Point de saut     *)
-  | Goto      of label                 (* Saut              *)
-  | CondGoto  of expression * label    (* Saut conditionnel *)
-  | Comment   of string                (* Commentaire       *)
-  | CallGTA   of call                  (* Appel de fonction *)
-
-type function_t = {
-  locals: identifier_info Symb_Tbl.t;
-  code:   block
-}    
-
+  | Set      of location * expression (* Affectation       *)
+  | Print    of expression            (* Affichage         *)
+  | Label    of label                 (* Point de saut     *)
+  | Goto     of label                 (* Saut              *)
+  | CondGoto of expression * label    (* Saut conditionnel *)
+  | Comment  of string                (* Commentaire       *)
+  | ProcCall of call                  (* Appel             *)
+      
+type program = (string * function_info) list
+and function_info = {
+  locals:  identifier_info Symb_Tbl.t;
+  formals: int;
+  code:    block;
+}

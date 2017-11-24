@@ -2,7 +2,7 @@ module S = IrAst
 module T = AllocatedAst
 
 module NodeMap = GraphColoring.NodeMap
-
+    
 (**
    Transformation des couleurs en allocations
    Les couleurs sont représentées par des entiers
@@ -20,48 +20,40 @@ let color_to_alloc i =
 let max_offset coloring =
   let max_color = GraphColoring.max_color coloring in
   match color_to_alloc(max_color) with
-  | T.Reg _   -> 0
-  | T.Stack o -> o
-
+    | T.Reg _   -> 0
+    | T.Stack o -> o
+    
 (** Allocation *)
-let allocate_func reg_flag p =
+let allocate_function reg_flag f =
   let current_offset = ref 0 in
-
-  (* On compte les paramètres formels pour attribuer
-   * les emplacements dans la pile *)
-  let num_formals = 
-    S.Symb_Tbl.fold (fun _ (elmt: S.identifier_info) acc ->
-        match elmt with
-        | Formal(_) -> acc + 1
-        | _ -> acc
-      ) p.S.locals 0
-  in
 
   let tbl =
     if reg_flag
     then
       (* Avec allocation de registres *)
-      let g = IrInterferenceGraph.interference_graph p in
+      let g = IrInterferenceGraph.interference_graph f in
       let coloring = GraphColoring.colorize g in
       let _ = current_offset := max_offset coloring in
       S.Symb_Tbl.mapi (fun id (info: S.identifier_info) ->
-          match info with
-          | Formal(n) -> T.Stack (num_formals + 8 - n)
-          | Return  -> T.Stack (num_formals + 8)
-          | Local   -> let color = NodeMap.find id coloring in
-            color_to_alloc color
-        ) p.locals
+      	match info with
+	  | Return   -> T.Stack (8+4*f.formals)
+      	  | Formal k -> T.Stack (8+4*(f.formals - k))
+      	  | Local    -> let color = NodeMap.find id coloring in
+      		        color_to_alloc color
+      ) f.locals
     else
       (* Tout sur la pile *)
       S.Symb_Tbl.mapi (fun id (info: S.identifier_info) ->
-          match info with
-          | Formal(n) -> T.Stack (num_formals + 8 - n)
-          | Return  -> T.Stack (num_formals + 8)
-          | Local   -> (current_offset := !current_offset - 4;
-                        T.Stack !current_offset)
-        ) p.S.locals
+	match info with
+	  | Return   -> T.Stack (8+4*f.formals)
+	  | Formal k -> T.Stack (8+4*(f.formals - k))
+	  | Local    -> (current_offset := !current_offset - 4;
+		         T.Stack !current_offset)
+      ) f.S.locals
   in
 
-  { T.locals = tbl; T.offset = !current_offset; T.code = p.S.code }
+  { T.locals = tbl; T.offset = !current_offset; T.code = f.S.code }
 
-let allocate_prog reg_flag p = S.Symb_Tbl.map (allocate_func reg_flag) p
+
+let allocate_program reg_flag p =
+  List.map (fun (id, info) -> id, allocate_function reg_flag info) p

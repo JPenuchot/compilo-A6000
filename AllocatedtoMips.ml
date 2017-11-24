@@ -1,26 +1,25 @@
 open AllocatedAst
 open Mips
 
-(* Génère un nom de label pour un saut
- * (pour éviter de confondre avec les sauts dans les fonctions) *)
-let fun_id_to_jal_label name = "func_" ^ name
+let push r = sw r 0 sp @@ addi sp sp (-4)
+let pop  r = addi sp sp 4 @@ lw r 0 sp	
 
-(* Génération des fonctions *)
-let generate_func p f fname =
+let generate_function f =
+
   (* Affecte des emplacements mémoire aux variables locales. *)
-  let sp_off   = f.offset in
+  let sp_off = f.offset in
   let symb_tbl = f.locals in
   let find_alloc id =
     try  AllocatedAst.Symb_Tbl.find id symb_tbl
     with Not_found -> failwith (Printf.sprintf "Node %s not found" id)
   in
-
+  
   let rec generate_block = function
-    | []       -> nop
+    | []       -> Nop
     | (l,i)::b -> comment l @@ generate_instr i @@ generate_block b
 
   (* Un appel [load_literal r v] génère du code qui place la valeur
-       immédiate [v] dans le registre [r]. *)
+     immédiate [v] dans le registre [r]. *)
   and load_literal r : AllocatedAst.literal -> 'a Mips.asm = function
     | Int(i)  -> li r i
     | Bool(b) -> let i = if b then -1 else 0 in li r i
@@ -30,47 +29,57 @@ let generate_func p f fname =
   and load_value r : AllocatedAst.value -> 'a Mips.asm = function
     | Literal(lit)   -> load_literal r lit
     | Identifier(id) -> (match find_alloc id with
-        | Reg r'  -> move r r'
-        | Stack o -> lw r o ~$fp)
+	| Reg r'  -> move r r'
+	| Stack o -> lw r o ~$fp)
 
+  (* Variante optimisée de [load_value], qui place la valeur dans le
+     registre [r] sauf si cette valeur est déjà stockée dans un
+     registre [r'].
+     Renvoie le code généré et le registre de destination effectif. *)
   and load_operand r : AllocatedAst.value -> Mips.register * 'a Mips.asm =
     function
-    | Literal(lit)   -> r, load_literal r lit
-    | Identifier(id) ->
-      (match find_alloc id with
-       | Reg r'  -> r', nop
-       | Stack o -> r, lw r o ~$fp
-      )
+      | Literal(lit)   -> r, load_literal r lit
+      | Identifier(id) ->
+	(match find_alloc id with
+	  | Reg r'  -> r', Nop
+	  | Stack o -> r, lw r o ~$fp
+	)
   (* Spécialisations pour les premier et second opérandes d'une opération. *)
   and load_first_operand v  = load_operand ~$t0 v
   and load_second_operand v = load_operand ~$t1 v
 
+  (* Un appel [to_dest dest r] génère du code qui place la valeur du
+     registre [r] dans l'emplacement de destination [dest]. *)
+  and to_dest dest r =
+    match find_alloc dest with
+      | Reg r'  -> move r' r
+      | Stack o -> sw r o fp
+
   and generate_instr : AllocatedAst.instruction -> 'a Mips.asm = function
     | Value(dest, v) ->
       (match find_alloc dest with
-       | Reg r   -> load_value r v
-       | Stack o -> let r, a = load_first_operand v in
-         a @@ sw r o ~$fp
+	| Reg r   -> load_value r v
+	| Stack o -> let r, a = load_first_operand v in
+		     a @@ sw r o ~$fp
       )
 
     | Binop(dest, op, o1, o2) ->
       let op = match op with
-        | Add  -> add
-        | Sub  -> sub
-        | Mult -> mul
-        | Div  -> div
-        | Eq   -> seq
-        | Neq  -> sne
-        | Lt   -> slt
-        | Le   -> sle
-        | And  -> and_
-        | Or   -> or_
+	| Add  -> add
+	| Mult -> mul
+	| Sub  -> sub
+	| Eq   -> seq
+	| Neq  -> sne
+	| Lt   -> slt
+	| Le   -> sle
+	| And  -> and_
+	| Or   -> or_
       in
       let (r1, a1) = load_first_operand o1 in
       let (r2, a2) = load_second_operand o2 in
       let aop = match find_alloc dest with
-        | Reg r   -> op r r1 r2
-        | Stack o -> op ~$t0 r1 r2 @@ sw ~$t0 o ~$fp
+	| Reg r   -> op r r1 r2
+	| Stack o -> op ~$t0 r1 r2 @@ sw ~$t0 o ~$fp
       in
       a1 @@ a2 @@ aop
 
@@ -80,139 +89,83 @@ let generate_func p f fname =
     | CondGoto(v,lab) -> load_value ~$t0 v @@ bnez ~$t0 lab
     | Comment(s)      -> comment s
 
-    (* TODO *)
-    | FunCall(dest, name, vals) ->
-      (* Appel de fonction *)
-      let f = Symb_Tbl.find name p in
-      let has_res = match Symb_Tbl.find_opt "result" p with
-        | None -> false | _ -> true in
-      (* Allocation de l'emplacement de la valeur de retour *)
-      let res_alloc = (if has_res then addi sp sp 4 else nop) in
-
-      let param_offset = (if has_res then 4 else 0)
-      and num_formals = List.fold_left (fun acc _ -> acc + 1) 0 vals in
-
-      (* Allocation des emplacements des paramètres *)
-      let param_alloc = addi sp sp (4 * num_formals) in
-
-      (* Affectation des valeurs des paramètres *)
-      let affect_vals, _ = List.fold_left (
-          fun (inst, cnt) value ->
-            (inst
-             (* On charge la valeur *)
-             @@ (load_value ~$t0 value)
-             (* On la place où il faut *)
-             @@ sw t0 cnt fp,
-             cnt + 4)
-        ) ((nop), param_offset + 4) vals in
-
-      (* Compilation de la phase pré-appel *)
-      let before = res_alloc @@ param_alloc @@ affect_vals in
-
-      (* Dépilement des paramètres formels de la fonction appelée *)
-      let unstack_param = addi sp sp (4 * num_formals) in
-      let aff_param =
-        match find_alloc dest with
-        | Reg r   -> lw r 0 sp
-        | Stack o -> lw t0 0 sp @@ sw t0 o fp
+    (* [ProcCall] et [FunCall] utilisent tous deux [generate_call]. *)
+    | ProcCall(c)   -> generate_call c
+    | FunCall(dest, c) ->
+      let d = match find_alloc dest with
+	| Reg r   -> pop r
+	| Stack o -> pop t0 @@ sw t0 o fp
       in
-      let restore = addi sp sp (param_offset + (4 * num_formals)) in
+      push zero            (* Avant l'appel, alloue une case pour le résultat *)
+      @@ generate_call c   (* Appel *)
+      @@ d                 (* Récupération du résultat *)
 
-      before @@ jal (fun_id_to_jal_label name) @@ aff_param @@ restore
+    (* [Load] et [Store] utilisent la même fonction [generate_access] pour
+       calculer l'adresse à laquelle lire ou écrire. *)
+    | Load(dest, a) ->
+      generate_access a                (* Calcul d'adresse *)
+      @@ lw t0 0 t0 @@ to_dest dest t0 (* Lecture          *)
+    | Store(a, v) ->
+      generate_access a                (* Calcul d'adresse *)
+      @@ load_value t1 v @@ sw t1 0 t0 (* Écriture         *)
 
-    | ProcCall(name, vals) ->
-      (* Appel de procédure (sans prendre en compte le retour éventuel) *)
-      let f = Symb_Tbl.find name p in
-      let has_res = match Symb_Tbl.find_opt "result" p with
-        | None -> false | _ -> true in
-      (* Allocation de l'emplacement de la valeur de retour *)
-      let res_alloc = (if has_res then addi sp sp 4 else nop) in
+    (* [New] alloue et initialise un bloc avec un nombre de mots donné *)
+    | New(dest, v) ->
+      load_value t0 v @@ li t1 4 @@ mul a0 t0 t1 (* Calcul de taille *)
+      @@ li v0 9 @@ syscall                      (* Allocation       *)
+      @@ sw t0 0 v0                              (* Entête           *)
+      @@ to_dest dest v0                         (* Retour           *)
+	
+  (* Appel de fonction *)
+  (* Note : cette version simple n'est pas compatible avec l'allocation de
+     registres. Pour cela, il faudrait avant l'appel effectuer des sauvegardes
+     des registres utilisés, puis après l'appel les restaurer. *)
+  and generate_call (id, args) =
+    generate_args args      (* On place les paramètres effectifs sur la pile *)
+    @@ jal id               (* Appel                                         *)
+    @@ addi sp sp (4*(List.length args)) (* Après l'appel, on libère la pile *)
 
-      let param_offset = (if has_res then 4 else 0)
-      and num_formals = List.fold_left (fun acc _ -> acc + 1) 0 vals in
+  and generate_args = function
+    | []      -> nop
+    | v::args -> load_value t0 v @@ push t0 @@ generate_args args
 
-      (* Allocation des emplacements des paramètres *)
-      let param_alloc = addi sp sp (4 * num_formals) in
-
-      (* Affectation des valeurs des paramètres *)
-      let affect_vals, _ = List.fold_left (
-          fun (inst, cnt) value ->
-            (inst
-             (* On charge la valeur *)
-             @@ (load_value ~$t0 value)
-             (* On la place où il faut *)
-             @@ sw t0 cnt fp,
-             cnt + 4)
-        ) ((nop), param_offset + 4) vals in
-
-      (* Compilation de la phase pré-appel *)
-      let before = res_alloc @@ param_alloc @@ affect_vals in
-
-      (* Dépilement des paramètres formels de la fonction appelée *)
-      let restore = addi sp sp (param_offset + (4 * num_formals)) in
-
-      before @@ jal (fun_id_to_jal_label name) @@ restore
+  (* Calcul d'adresse v2[v1] = v1 + 4*(v2+1) *)
+  and generate_access (v1, v2) =
+    load_value t0 v2 @@ li t1 4 @@ mul t0 t0 t1  (* Calcul du décalage    *)
+    @@ load_value t1 v1 @@ add t0 t0 t1          (* Combinaison avec base *)
+      
   in
 
-  (* Génération d'une fonction *)
-  if fname <> "main" then
-    (* Retourne la taille de la pile de f + 4 *)
-    let sp_shift =
-      (* Nb var locales + 4 *)
-      Symb_Tbl.cardinal f.locals + 4
-    in
+  (* On organise le code d'une fonction en trois partie : [init], [code]
+     et [close] *)
+  (* Convention d'appel : l'appelé, au début *)
+  let function_init =
+    push fp
+    @@ push ra
+    @@ addi fp sp 4
+    @@ addi sp sp sp_off
+  in
+  (* Corps de la fonction *)
+  let function_code = generate_block f.code in
+  (* Convention d'appel : l'appelé, à la fin *)
+  let function_close =
+    addi sp sp (-sp_off)
+    @@ pop ra
+    @@ pop fp
+    @@ jr ra
+  in
+  function_init @@ function_code @@ function_close
 
-    (* Sauvegarde de $ra et $old_fp *)
-    let init =
-      label (fun_id_to_jal_label fname)
-      @@ addi sp sp (-8) (* $sp pointe au sommet de la pile de l'appelant,
-                          * on l'incrémente de 2 cases (8 octets) pour stocker
-                          * $ra et old_$fp. *)
-
-      @@ sw ra 0 sp     (* $sp pointe où fp devra pointer, CàD à l'emplacement
-                         * de sauvegarde de $ra. *)
-
-      @@ sw fp 4 sp     (* Une case (4 octets) au-dessus on stocke old_$fp. *)
-      @@ addi fp sp 0   (* $fp <- $sp *)
-      @@ addi sp fp sp_shift (* On alloue enfin la place nécessaire pour les
-                              * variables locales de la fonction. *)
-
-
-    (* Dépilement, restauration des registres *)
-    and close =
-      addi sp fp 0        (* On dépile tout. *)
-      @@ lw ra 0 sp       (* On restaure $ra *)
-      @@ lw fp 4 sp       (* On restaure $fp avec old_$fp *)
-      @@ addi sp sp (-8)  (* On désalloue $ra et old_$fp de la pile *)
-      @@ jal ra           (* On retourne à l'appelant *)
-    in init @@ (generate_block f.code) @@ close
-
-  else  (* Cas du main *)
-    let init_main =
-      move fp sp
-      @@ addi fp fp (-4)
-      @@ lw a0 0 a1
-      @@ jal "atoi"
-      @@ sw v0 0 fp
-      @@ addi sp sp sp_off
-
-    and close_main = li v0 10 @@ syscall in
-
-    (* TODO : Un peu plus de checks sur les paramètres formels du main... *)
-
-    init_main
-    @@ (generate_block (Symb_Tbl.find "main" p).code)
-    @@ close_main
-
-let generate_prog p =
-  let main = generate_func p (Symb_Tbl.find "main" p) "main" in
-  (*let new_p = Symb_Tbl.remove "main" p in*)
-  (*let functions =*)
-  (*  Symb_Tbl.fold (fun key e acc ->*)
-  (*      acc @@ (generate_func new_p e key)*)
-  (*    ) main*)
-  (*in*)
-  (*and functions = generate_block f.code*)
+let generate_program p =
+    
+  let init =
+    lw a0 0 a1
+    @@ jal "atoi"
+    @@ push v0
+    @@ jal "main"
+    @@ li v0 10
+    @@ syscall
+  in
 
   let built_ins =
     label "atoi"
@@ -238,4 +191,9 @@ let generate_prog p =
     @@ move v0 t1
     @@ jr   ra
   in
-  { text = main (*@@ functions*) @@ built_ins; data = nop }
+  
+  let asm = List.fold_right (fun (id, f_info) asm ->
+    label id @@ generate_function f_info @@ asm
+  ) p nop
+  in
+  { text = init @@ asm @@ built_ins; data = Nop }

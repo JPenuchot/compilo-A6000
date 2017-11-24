@@ -4,7 +4,7 @@ module S = GotoAst
 module T = IrAst
 
 
-let flatten_func p name f =
+let flatten_function fid f =
 
   (* On extrait la table des symboles de notre programme, qui sera étendue
      avec les registres virtuels créés à la volée. *)
@@ -14,7 +14,7 @@ let flatten_func p name f =
   let add_symb s =
     symb_tbl := T.Symb_Tbl.add s (Local: T.identifier_info) !symb_tbl;
   in
-
+  
   (* new_tmp: unit -> string *)
   (* Un appel [new_tmp()] crée un nouvel identifiant de registre virtuel
      et l'ajoute à la table des symboles. *)
@@ -31,24 +31,40 @@ let flatten_func p name f =
   let rec flatten_block = function
     | []   -> []
     | i::b -> flatten_instruction i @ (flatten_block b)
-
+      
   (* flatten_instruction: S.instruction -> T.instruction list *)
   and flatten_instruction = function
-    | S.Set(Identifier(l), e) ->
+    | S.Set(Identifier id, e) ->
       let ce, ve = flatten_expression e in
-      ce @ [ T.Value(l, ve) ]
+      ce @ [ T.Value(id, ve) ]
+
+    | S.Set(ArrayAccess(a), e) ->
+      let ca, va = flatten_access a in
+      let ce, ve = flatten_expression e in
+      ca @ ce @ [ T.Store(va, ve) ]
+	
     | S.Print(e) ->
       let ce, ve = flatten_expression e in
       ce @ [ T.Print(ve) ]
-    | S.Label(l)    -> [ T.Label(l) ]
-    | S.Goto(l)     -> [ T.Goto(l) ]
+	
+    | S.Label l -> [ T.Label l ]
+    
+    | S.Goto l  -> [ T.Goto l ]
+    
     | S.CondGoto(e, l) ->
       let ce, ve = flatten_expression e in
-      ce @ [ T.CondGoto(ve, l)]
-    | S.Comment(s)  -> [ T.Comment(s) ]
-    | S.CallGTA(c)  -> let ce, _ = flatten_expression (CallExp(c)) in ce
+      ce @ [ T.CondGoto(ve, l) ]
+	
+    | S.Comment(s) -> [ T.Comment(s) ]
 
+    | S.ProcCall(c) -> let co, ca = flatten_call c in
+		       co @ [ T.ProcCall(ca) ]
 
+  and flatten_access (e1, e2) : T.instruction list * T.access =
+    let ce1, ve1 = flatten_expression e1 in
+    let ce2, ve2 = flatten_expression e2 in
+    ce1 @ ce2, (ve1, ve2)
+    
   (* flatten_expression: S.expression -> T.instruction list -> T.value *)
   (* Appliquée à une expression, [flatten_expression] renvoie une liste
      d'instructions calculant le résultat de cette expression, ainsi qu'une
@@ -61,44 +77,56 @@ let flatten_func p name f =
   *)
   and flatten_expression : S.expression -> T.instruction list * T.value =
     function
-    | Location(Identifier id) -> [], T.Identifier(id)
-    | Literal(l) -> [], T.Literal(l)
-    | Binop (b, e1, e2) ->
-      let id = new_tmp ()
-      and (l1, v1) = (flatten_expression e1)
-      and (l2, v2) = (flatten_expression e2) in
-      (l1 @ l2 @ [ Binop(id, b, v1, v2) ], T.Identifier(id))
-    | CallExp(name, arglist) ->
-      (* Appel de la fonction *)
-      let id = new_tmp () in
-      let insl, idl = List.fold_left (fun acc elmt ->
-          let ins, id = flatten_expression elmt
-          and inslist, idlist = acc in
-          (inslist @ ins), (id :: idlist)
-        ) ([],[]) arglist in
+      | Literal(lit) -> [], T.Literal(lit)
+	
+      | Location(Identifier id) -> [], T.Identifier(id)
+      | Location(ArrayAccess(a)) ->
+	let ca, va = flatten_access a in
+	let res = new_tmp() in
+	ca @ [ T.Load(res, va) ], T.Identifier res
+	  
+      | Binop(op, e1, e2) ->
+	let ce1, ve1 = flatten_expression e1 in
+	let ce2, ve2 = flatten_expression e2 in
+	let res = new_tmp() in
+	ce1 @ ce2 @ [ T.Binop(res, op, ve1, ve2) ], T.Identifier res
+	  
+      | FunCall(c) ->
+	let co, ca = flatten_call c in
+	let res = new_tmp() in
+	co @ [ T.FunCall(res, ca) ], T.Identifier res
 
-      (insl @ [ T.FunCall(id, name, (List.rev idl)) ], T.Identifier(id))
+      | NewArray(e) ->
+	let ce, ve = flatten_expression e in
+	let res = new_tmp() in
+	ce @ [ T.New(res, ve) ], T.Identifier res
+
+  (* Dans le cas d'une fonction, il faut calculer les valeurs de l'ensemble
+     des paramètres formels et associer chacun à une nouvelle variable avant
+     de pouvoir faire l'appel proprement dit *)
+  and flatten_call (id, args) : T.instruction list * T.call =
+    let cargs, vargs = List.split (List.map flatten_expression args) in
+    List.flatten cargs, (id, vargs)
+    
   in
 
   (* label_instruction: T.instruction -> T.label * T.instruction *)
   (* Un appel [label_instruction i] crée une nouvelle étiquette pour
      identifier l'instruction [i], si celle-ci n'est pas déjà une étiquette
      de saut. *)
-  let label_instruction name =
+  let label_instruction =
     let cpt = ref 0 in
-    fun i -> let lab = Printf.sprintf "_%s_%d" name !cpt in
-      incr cpt;
-      match i with
-      (* On force une correspondance entre étiquette de saut
-         et étiquette d'analyse. *)
-      | T.Label l -> l, i
-      | _         -> lab, i
+    fun i -> let lab = Printf.sprintf "_%s_%d" fid !cpt in
+	     incr cpt;
+	     match i with
+	       (* On force une correspondance entre étiquette de saut
+		  et étiquette d'analyse. *)
+	       | T.Label l -> l, i
+	       | _         -> lab, i
   in
 
   let flattened_code = flatten_block f.S.code in
-  {
-    T.locals = !symb_tbl;
-    T.code = List.map (label_instruction name) flattened_code
-  }
-
-let flatten_prog p = S.Symb_Tbl.mapi (flatten_func p) p
+  { T.locals = !symb_tbl; T.formals = f.S.formals; T.code = List.map label_instruction flattened_code }
+  
+let flatten_program p =
+  List.map (fun (id, info) -> id, flatten_function id info) p

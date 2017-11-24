@@ -1,209 +1,150 @@
 %{
 
   open SourceAst
-
+  open Lexing
+  
 %}
 
-(* Keywords *)
+%token <int> CONST_INT
+%token PLUS MINUS STAR
+%token <bool> CONST_BOOL
+%token AND OR
+%token EQUAL NEQ LT LE
+%token <string> IDENT
+%token BEGIN END
+%token IF THEN ELSE
+%token WHILE
+%token SEMI
+%token SET
 %token VAR
-%token SEMI COMMA
+%token INT BOOL
 %token PRINT
 %token EOF
-%token BEGIN END
-
-(* Loops *)
-%token FOR WHILE IF THEN ELSE
-
-(* Typenames *)
-%token INT BOOL
-
-(* Names & values *)
-%token <string> IDENT
-%token <bool> BOOLVAL
-%token <int> INTVAL
-
-(* Affectation *)
-%token AFFECT
-
-(* Binops *)
-%token AND OR
-%token EQ LT LE NEQ
-%token MULT DIV
-%token ADD SUB
+%token COMMA
+%token OB CB
 
 %left AND OR
-%left EQ LT LE NEQ
-%left ADD SUB
-%left MULT DIV
+%left LE LT EQUAL NEQ
+%left PLUS MINUS
+%left STAR
+%left OB
+%left IDENT
+%left BEGIN
 
-%start prog
-%type <SourceAst.program> prog
+%start program
+%type <SourceAst.program> program
 
 %%
 
-(* Program structure *)
-
-prog:
-| EOF                                     { Symb_Tbl.empty }
-| fd = fun_decl; p = prog;
-  {
-    let (fd, id) = fd in
-      Symb_Tbl.add id fd p
-  }
-
-(* Function declaration syntax *)
-
+program:
+| fds=fun_decls; EOF  { fds }
+;
+ 
+fun_decls:
+| (* empty *)                { []      }
+| fd=fun_decl; fds=fun_decls { fd::fds };
+    
 fun_decl:
-(* Function *)
-| t=typename; id=IDENT;
-  BEGIN; p=parameters; END;
-  BEGIN; vds=var_decls; is=instructions; END;
-  {
-    let (form, pl, _) = p in
-    (
-      { return = None;
-        locals = Symb_Tbl.union
-        (fun _ _ v -> Some v)
-        vds
-        (Symb_Tbl.add "result" {typ = t; kind = Return} form);
-        formals = pl;
-        code = is
-      },
-      id
-    )
-  }
-
-(* Procedure *)
-| id=IDENT;
-  BEGIN; p=parameters; END;
-  BEGIN; vds=var_decls; is=instructions; END;
-  {
-    (
-      let (form, pl, _) = p in
-      { 
-        return = None;
-        locals = Symb_Tbl.union
-        (fun _ _ v -> Some v)
-         vds form;
-        formals = pl;
-        code = is
-      },
-      id
-    )
-  }
+| ty=option(typ) id=IDENT BEGIN args=formals END
+    BEGIN vds=var_decls is=instructions END {
+      (* Si la fonction a un type de retour, initialiser la table des
+	 symboles avec la variables spéciale "result" *)
+      let base_env = match ty with
+	| None -> Symb_Tbl.empty
+	| Some ty -> Symb_Tbl.singleton "result" { typ=ty; kind=Return }
+      in
+      (* Calculer et ajouter les informations pour les paramètres formels *)
+      let info_params = List.mapi (fun i (id, ty) ->
+	id, { typ=ty; kind=Formal (i+1) }
+      ) args
+      in
+      let param_env = List.fold_left (fun acc (id, info) ->
+	Symb_Tbl.add id info acc
+      ) base_env info_params
+      in
+      (* Ajouter enfin les variables locales *)
+      let local_env = List.fold_left (fun acc (id, ty) ->
+	Symb_Tbl.add id { typ=ty; kind=Local } acc
+      ) param_env vds
+      in
+      id, { return=ty; formals=args; locals=local_env; code=is }
+    }
 ;
 
-parameters:
-| (* Empty *)                             { (Symb_Tbl.empty, [], 0) }
-| p=params                                { p }
-
-params:
-| tp=typename; id=IDENT
-  {
-    (Symb_Tbl.singleton id { typ = tp; kind = Formal(1)}, [ tp ], 2)
-  }
-| p=params; COMMA;tp=typename; id=IDENT;
-  { 
-    let (st, pl, num) = p in
-    (Symb_Tbl.add id { typ = tp; kind = Formal(num)} st, tp :: pl, num + 1)
-  }
+formals:
+| pl=separated_list(COMMA, typed_ident) { pl }
 ;
 
-
+typed_ident:
+| t=typ; id=IDENT  { (id, t) }
+;
+  
 var_decls:
-| (* empty *)                             { Symb_Tbl.empty }
-
-| VAR; t=typename; id=IDENT; SEMI; vtbl=var_decls
-  {
-    Symb_Tbl.add id { typ = t; kind = Local } vtbl
-  }
+| vds=list(var_decl) { vds }
 ;
 
-(* Instruction syntax *)
+var_decl:
+| VAR; vd=typed_ident; SEMI  { vd  }
+;
+
+typ:
+| INT          { TypInteger    }
+| BOOL         { TypBoolean    }
+| OB CB ty=typ { TypArray(ty)  }
+;
 
 instructions:
-| (* empty *)                             { [] }
-| i=instruction; SEMI; is=instructions    { i :: is }
-
-(* for ins, comp, incr ( blk ) *)
-| FOR;
-  BEGIN; i_st=instruction;
-    COMMA; e=expression;
-    COMMA; i_it=instruction;
-  END;
-  BEGIN; blk=instructions; END; is=instructions
-  {
-    i_st ::
-    [ While(e, blk @ [i_it]) ] @
-    is
-  }
+| (* empty *)                          { []      }
+| i=instruction; SEMI; is=instructions { i :: is }
 ;
 
 instruction:
-| PRINT; BEGIN; e=expression; END         { Print(e) }
-
-| WHILE; BEGIN; e=expression; END;
-  BEGIN; i=instructions; END              { While(e, i) }
-
-| IF; e=expression;
-  THEN; BEGIN; i1=instructions; END;
-  ELSE; BEGIN; i2=instructions; END       { If(e, i1, i2) }
-
-| l=location; AFFECT; e=expression        { Set(l, e) }
-| l=location; b=binop;AFFECT;e=expression { Set(l, Binop(b, Location(l), e)) }
-| c=call                                  { CallIns(c) }
+| l=location; SET; e=expression                     { Set(l, e)     }
+| WHILE; e=expression; b=block                      { While(e, b)   }
+| IF; e=expression; THEN; b1=block; ELSE; b2=block  { If(e, b1, b2) }
+| PRINT; BEGIN; e=expression; END                   { Print(e)      }
+| c=call                                            { ProcCall(c)   }
 ;
 
-(* Expression syntax *)
+block:
+| BEGIN; is=instructions; END        { is }
+;
 
 expression:
-| c=call                                  { CallExp(c) }
-| i=INTVAL;                               { Literal(Int(i)) }
-| b=BOOLVAL;                              { Literal(Bool(b)) }
-| loc=location                            { Location(loc) }
-| e1=expression; b=binop; e2=expression   { Binop(b, e1, e2) }
+| lit=literal                             { Literal(lit)      }
+| loc=location                            { Location(loc)     }
+| BEGIN; e=expression; END                { e                 }
+| e1=expression; op=binop; e2=expression  { Binop(op, e1, e2) }
+| c=call                                  { FunCall(c)        }
+| OB; e=expression; CB; ty=typ            { NewArray(e, ty)   }
 ;
-
-(* Function calls *)
 
 call:
-| i=IDENT; BEGIN; a=arguments; END        { (i, a) }
+| id=IDENT BEGIN args=actuals END         { (id, args)        }
 ;
 
-arguments:
-| (* empty *)                             { [] }
-| a=args                                  { List.rev a }
+actuals:
+| args=separated_list(COMMA, expression)  { args              }
 ;
 
-args:
-| e=expression { [ e ] }
-| elist=args; COMMA; e=expression { e :: elist }
-;
-
-(* Types *)
-
-typename:
-| INT                                     { TypInteger }
-| BOOL                                    { TypBoolean }
+literal:
+| i=CONST_INT   { Int i  }
+| b=CONST_BOOL  { Bool b }
 ;
 
 location:
-| id=IDENT  { Identifier id }
+| id=IDENT                             { Identifier(id)      }
+| e1=expression; OB; e2=expression; CB { ArrayAccess(e1, e2) }
 ;
 
-(* Binops *)
-
 %inline binop:
-| ADD;      { Add }
-| SUB;      { Sub }
-| MULT;     { Mult }
-| DIV;      { Div }
-
-| EQ;       { Eq }
-| NEQ;      { Neq }
-| LT;       { Lt }
-| LE;       { Le }
-
-| AND;      { And }
-| OR;       { Or }
+| PLUS   { Add  }
+| MINUS  { Sub  }
+| STAR   { Mult }
+| EQUAL  { Eq   }
+| NEQ    { Neq  }
+| LT     { Lt   }
+| LE     { Le   }
+| AND    { And  }
+| OR     { Or   }
 ;

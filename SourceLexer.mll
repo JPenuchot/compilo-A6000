@@ -6,79 +6,86 @@
   let id_or_keyword =
     let h = Hashtbl.create 17 in
     List.iter (fun (s, k) -> Hashtbl.add h s k)
-      [	
-          "integer",  INT;
-	        "print",    PRINT;
-          "while",    WHILE;
-          "for",      FOR;
-          "if",       IF;
-          "then",     THEN;
-          "else",     ELSE;
-          "var",      VAR;
-          "boolean",  BOOL;
-          "true",     BOOLVAL(true);
-          "false",    BOOLVAL(false);
+      [ "true",     CONST_BOOL(true);
+	"false",    CONST_BOOL(false);
+	"while",    WHILE;
+	"if",       IF;
+	"then",     THEN;
+	"else",     ELSE;
+	"integer",  INT;
+	"boolean",  BOOL;
+	"print",    PRINT;
+	"var",      VAR;
       ] ;
     fun s ->
-    Printf.printf "Current token : %s\n" s;
       try  Hashtbl.find h s
       with Not_found -> IDENT(s)
+
+  (* let new_line lexbuf = *)
+  (*   print_string "newline\n"; *)
+  (*   let pos = lexbuf.lex_curr_p in *)
+  (*   lexbuf.lex_curr_p <-  *)
+  (*     { pos with pos_lnum = pos.pos_lnum + 1; pos_bol = pos.pos_cnum;  *)
+  (*       pos_cnum=0 }; *)
+  (*   print_int lexbuf.lex_curr_p.pos_lnum *)
+	
 }
 
 let digit = ['0'-'9']
 let alpha = ['a'-'z' 'A'-'Z']
 let ident = ['a'-'z' '_'] (alpha | '_' | '\'' | digit)*
-let integer = (digit)*
 
 rule token = parse
-  | ['\n']
-      { print_string "New line\n";token lexbuf }
+  | '\n'
+      { new_line lexbuf; token lexbuf }
   | [' ' '\t' '\r']+
       { token lexbuf }
-  (*| "true" | "false"*)
-  (*    { BOOLVAL(bool_of_string (lexeme lexbuf)) }*)
+  | "(*"
+      { comment lexbuf; token lexbuf }
+  | digit+
+      { CONST_INT (int_of_string (lexeme lexbuf)) }
   | ident
       { id_or_keyword (lexeme lexbuf) }
-  | integer
-      { INTVAL(int_of_string (lexeme lexbuf)) }
   | "("
       { BEGIN }
   | ")"
       { END }
-  | ";"
-      { SEMI }
+  | "["
+      { OB }
+  | "]"
+      { CB }
   | ","
       { COMMA }
+  | ";"
+      { SEMI }
+  | ":="
+      { SET }
   | "+"
-      { ADD }
+      { PLUS }
   | "-"
-      { SUB }
+      { MINUS }
   | "*"
-      { MULT }
-  | "/"
-      { DIV }
+      { STAR }
   | "=="
-      { EQ }
+      { EQUAL }
   | "!="
       { NEQ }
-  | "&&"
-      { AND }
-  | "||"
-      { OR }
   | "<"
       { LT }
   | "<="
       { LE }
-  | "=<"
-      { LE }
-  | ":="
-      { AFFECT }
+  | "&&"
+      { AND }
+  | "||"
+      { OR }
   | _
       { failwith ("Unknown character : " ^ (lexeme lexbuf)) }
   | eof
       { EOF }
 
 and comment = parse
+  | ['\n']
+      { new_line lexbuf; comment lexbuf }
   | "(*"
       { comment lexbuf; comment lexbuf }
   | "*)"
